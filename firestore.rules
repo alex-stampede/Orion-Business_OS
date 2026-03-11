@@ -1,0 +1,91 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function hasUserProfile() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function businessIdFromProfile() {
+      return userDoc().data.businessId;
+    }
+
+    function belongsToBusiness(businessId) {
+      return hasUserProfile() &&
+        businessIdFromProfile() == businessId;
+    }
+
+    function isBusinessOwner(businessId) {
+      return belongsToBusiness(businessId) &&
+        get(/databases/$(database)/documents/businesses/$(businessId)).data.ownerUid == request.auth.uid;
+    }
+
+    function isBusinessMember(businessId) {
+      return belongsToBusiness(businessId) &&
+        exists(/databases/$(database)/documents/businesses/$(businessId)/users/$(request.auth.uid));
+    }
+
+    match /users/{uid} {
+      allow read, update, delete: if isSelf(uid);
+      allow create: if isSelf(uid);
+    }
+
+    match /businesses/{businessId} {
+      allow read: if isBusinessMember(businessId);
+      allow create: if isSignedIn() &&
+        request.resource.data.ownerUid == request.auth.uid;
+      allow update, delete: if isBusinessOwner(businessId);
+
+      match /users/{uid} {
+        allow read: if isBusinessMember(businessId);
+        allow create: if isBusinessOwner(businessId) || isSelf(uid);
+        allow update, delete: if isBusinessOwner(businessId) || isSelf(uid);
+      }
+
+      match /clients/{clientId} {
+        allow read, create, update, delete: if isBusinessMember(businessId);
+      }
+
+      match /leads/{leadId} {
+        allow read, create, update, delete: if isBusinessMember(businessId);
+      }
+
+      match /quotes/{quoteId} {
+        allow read, create, update, delete: if isBusinessMember(businessId);
+
+        match /items/{itemId} {
+          allow read, create, update, delete: if isBusinessMember(businessId);
+        }
+      }
+
+      match /opportunities/{opportunityId} {
+        allow read, create, update, delete: if isBusinessMember(businessId);
+      }
+
+      match /products/{productId} {
+        allow read, create, update, delete: if isBusinessMember(businessId);
+      }
+
+      match /activities/{activityId} {
+        allow read, create, update, delete: if isBusinessMember(businessId);
+      }
+
+      match /settings/{settingId} {
+        allow read, create, update, delete: if isBusinessMember(businessId);
+      }
+    }
+  }
+}
