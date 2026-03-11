@@ -1,15 +1,13 @@
 import { $, escapeHtml } from "../helpers.js";
-import { showToast } from "../ui.js";
+import { showToast, syncUpgradeButton } from "../ui.js";
 import {
   getBusinessSettings,
   saveBusinessSettings,
   addActivity,
-  uploadBusinessLogo,
-  getCurrentBusinessPlan,
-  updateBusinessPlan
+  uploadBusinessLogo
 } from "../firestore-service.js";
 import { getState, setState } from "../state.js";
-import { syncUpgradeButton } from "../ui.js";
+import { startProCheckout, openCustomerPortal } from "../stripe-billing.js";
 
 let settingsCache = {
   businessEmail: "",
@@ -36,10 +34,41 @@ let settingsCache = {
   commercialNotes: ""
 };
 
+function getPlanUI(state = {}) {
+  const business = state.business || {};
+  const isPro = business.plan === "pro";
+  const subscriptionStatus = business.subscriptionStatus || "inactive";
+  const cancelAtPeriodEnd = Boolean(business.cancelAtPeriodEnd);
+
+  return {
+    isPro,
+    planName: isPro ? "Plan Pro" : "Plan Inicio",
+    subscriptionStatus,
+    cancelAtPeriodEnd,
+    priceText: isPro ? "$149 MXN / mes" : "Gratis"
+  };
+}
+
+function renderSubscriptionBadge(subscriptionStatus = "inactive") {
+  const labelMap = {
+    active: "Activa",
+    trialing: "Prueba",
+    past_due: "Pago pendiente",
+    unpaid: "Impaga",
+    canceled: "Cancelada",
+    inactive: "Inactiva"
+  };
+
+  return `
+    <span class="chip" style="margin-top:8px;">
+      ${labelMap[subscriptionStatus] || subscriptionStatus}
+    </span>
+  `;
+}
+
 export function renderSettings(state = {}) {
   const business = state.business || {};
-  const currentPlan = business.plan === "pro" ? "pro" : "free";
-  const currentPlanName = currentPlan === "pro" ? "Plan Pro" : "Plan Inicio";
+  const plan = getPlanUI(state);
 
   return `
     <section class="app-view glass">
@@ -57,20 +86,46 @@ export function renderSettings(state = {}) {
         <article class="app-panel">
           <div class="card-head">
             <strong>Tu plan actual</strong>
-            <span>${currentPlanName}</span>
+            <span>${plan.priceText}</span>
           </div>
-          <p class="muted">
+
+          <h3 style="margin-bottom:10px;">${plan.planName}</h3>
+          ${renderSubscriptionBadge(plan.subscriptionStatus)}
+
+          <p class="muted" style="margin-top:14px;">
             ${
-              currentPlan === "pro"
-                ? "Tu cuenta opera sin límites y tienes acceso completo a leads, clientes y cotizaciones ilimitadas."
+              plan.isPro
+                ? "Tu cuenta opera sin límites y tiene acceso completo a leads, clientes y cotizaciones ilimitadas."
                 : "Tu cuenta incluye hasta 3 leads, 3 clientes y 3 cotizaciones."
             }
           </p>
+
+          ${
+            plan.cancelAtPeriodEnd
+              ? `
+              <div class="app-panel" style="margin-top:16px; padding:14px 16px;">
+                <strong style="display:block; margin-bottom:6px;">Cancelación programada</strong>
+                <p class="muted">
+                  Tu Plan Pro seguirá activo hasta el final del periodo actual.
+                </p>
+              </div>
+            `
+              : ""
+          }
+
           <div class="btn-row mt-4">
             ${
-              currentPlan === "pro"
-                ? `<button class="btn btn-secondary" type="button" id="cancel-pro-btn">Cancelar Plan Pro</button>`
-                : `<button class="btn btn-primary" type="button" id="upgrade-pro-btn">Mejorar a Plan Pro · $149 MXN/mes</button>`
+              plan.isPro
+                ? `
+                <button class="btn btn-secondary" type="button" id="manage-subscription-btn">
+                  Administrar suscripción
+                </button>
+              `
+                : `
+                <button class="btn btn-primary" type="button" id="upgrade-pro-btn">
+                  Mejorar a Plan Pro · $149 MXN/mes
+                </button>
+              `
             }
           </div>
         </article>
@@ -88,7 +143,7 @@ export function renderSettings(state = {}) {
                 <input
                   id="business-name-input"
                   type="text"
-                  value="${escapeHtml(business.name || "")}"
+                  value="${escapeHtml(business.name || business.businessName || "")}"
                   placeholder="Nombre del negocio"
                 />
               </div>
@@ -295,60 +350,34 @@ async function loadSettingsIntoForm() {
   renderLogoPreview();
 }
 
+function bindBillingButtons() {
+  $("#upgrade-pro-btn")?.addEventListener("click", async () => {
+    try {
+      showToast("Redirigiendo a Stripe...");
+      await startProCheckout();
+    } catch (error) {
+      console.error(error);
+      showToast(error.message || "No se pudo iniciar Stripe Checkout");
+    }
+  });
+
+  $("#manage-subscription-btn")?.addEventListener("click", async () => {
+    try {
+      showToast("Abriendo portal de suscripción...");
+      await openCustomerPortal();
+    } catch (error) {
+      console.error(error);
+      showToast(error.message || "No se pudo abrir el portal de Stripe");
+    }
+  });
+}
+
 export function initSettings() {
   const form = $("#settings-form");
   if (!form) return;
 
   loadSettingsIntoForm();
-
-  document.getElementById("upgrade-pro-btn")?.addEventListener("click", async () => {
-    try {
-      await updateBusinessPlan("pro");
-
-      const state = getState();
-      setState({
-        business: {
-          ...state.business,
-          plan: "pro",
-          planName: "Plan Pro",
-          planPrice: 149
-        }
-      });
-
-      syncUpgradeButton();
-      showToast("Tu cuenta ahora es Plan Pro");
-      window.dispatchEvent(new HashChangeEvent("hashchange"));
-    } catch (error) {
-      console.error(error);
-      showToast("No se pudo actualizar el plan");
-    }
-  });
-
-  document.getElementById("cancel-pro-btn")?.addEventListener("click", async () => {
-    const ok = window.confirm("¿Seguro que quieres volver al Plan Inicio?");
-    if (!ok) return;
-
-    try {
-      await updateBusinessPlan("free");
-
-      const state = getState();
-      setState({
-        business: {
-          ...state.business,
-          plan: "free",
-          planName: "Plan Inicio",
-          planPrice: 0
-        }
-      });
-
-      syncUpgradeButton();
-      showToast("Tu cuenta volvió al Plan Inicio");
-      window.dispatchEvent(new HashChangeEvent("hashchange"));
-    } catch (error) {
-      console.error(error);
-      showToast("No se pudo cancelar el plan");
-    }
-  });
+  bindBillingButtons();
 
   form.addEventListener("submit", async event => {
     event.preventDefault();
@@ -389,8 +418,21 @@ export function initSettings() {
 
       await saveBusinessSettings(payload);
       settingsCache = { ...settingsCache, ...payload };
+
+      const state = getState();
+      const business = state.business || {};
+
+      setState({
+        business: {
+          ...business,
+          name: payload.businessName || business.name || "Mi negocio",
+          businessName: payload.businessName || business.businessName || "Mi negocio"
+        }
+      });
+
       await addActivity("settings_updated", "Se actualizó la configuración del negocio.");
       renderLogoPreview();
+      syncUpgradeButton();
       showToast("Configuración guardada correctamente");
     } catch (error) {
       console.error(error);
