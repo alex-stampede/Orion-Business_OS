@@ -92,10 +92,16 @@ exports.handler = async (event) => {
       };
     }
 
-    const session = await stripe.billingPortal.sessions.create({
+    const payload = {
       customer: stripeCustomerId,
       return_url: `${process.env.APP_URL}/app.html#settings`
-    });
+    };
+
+    if (process.env.STRIPE_PORTAL_CONFIGURATION_ID) {
+      payload.configuration = process.env.STRIPE_PORTAL_CONFIGURATION_ID;
+    }
+
+    const session = await stripe.billingPortal.sessions.create(payload);
 
     return {
       statusCode: 200,
