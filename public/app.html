@@ -128,131 +128,135 @@
   </main>
 
   <script type="module">
-    import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-    import { auth, db } from "./js/firebase-config.js";
-    import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-    import { setState } from "./js/state.js";
-    import { initRouter } from "./js/router.js";
-    import { updateSidebarProfile, showToast } from "./js/ui.js";
+  import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { auth, db } from "./js/firebase-config.js";
+  import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { setState } from "./js/state.js";
+  import { initRouter } from "./js/router.js";
+  import { updateSidebarProfile, showToast } from "./js/ui.js";
 
-    function setupMobileSidebar() {
-      const sidebar = document.getElementById("sidebar");
-      const mobileMenuBtn = document.getElementById("mobile-menu-btn");
+  function setupMobileSidebar() {
+    const sidebar = document.getElementById("sidebar");
+    const mobileMenuBtn = document.getElementById("mobile-menu-btn");
 
-      const isMobile = () => window.innerWidth <= 980;
+    const isMobile = () => window.innerWidth <= 980;
 
-      const toggleSidebar = () => {
-        if (!isMobile()) return;
-        sidebar?.classList.toggle("is-mobile-open");
-      };
+    const toggleSidebar = () => {
+      if (!isMobile()) return;
+      sidebar?.classList.toggle("is-mobile-open");
+    };
 
-      const closeSidebar = () => {
-        if (!isMobile()) return;
+    const closeSidebar = () => {
+      if (!isMobile()) return;
+      sidebar?.classList.remove("is-mobile-open");
+    };
+
+    mobileMenuBtn?.addEventListener("click", event => {
+      event.preventDefault();
+      toggleSidebar();
+    });
+
+    document.querySelectorAll(".sidebar .nav-item").forEach(item => {
+      item.addEventListener("click", () => {
+        closeSidebar();
+      });
+    });
+
+    window.addEventListener("resize", () => {
+      if (!isMobile()) {
         sidebar?.classList.remove("is-mobile-open");
-      };
+      }
+    });
+  }
 
-      mobileMenuBtn?.addEventListener("click", event => {
-        event.preventDefault();
-        toggleSidebar();
-      });
+  async function bootstrapApp(firebaseUser) {
+    const userRef = doc(db, "users", firebaseUser.uid);
+    const userSnap = await getDoc(userRef);
 
-      document.querySelectorAll(".sidebar .nav-item").forEach(item => {
-        item.addEventListener("click", () => {
-          closeSidebar();
-        });
-      });
+    let appUser = {
+      uid: firebaseUser.uid,
+      email: firebaseUser.email || "",
+      displayName: firebaseUser.displayName || "",
+      fullName: firebaseUser.displayName || ""
+    };
 
-      window.addEventListener("resize", () => {
-        if (!isMobile()) {
-          sidebar?.classList.remove("is-mobile-open");
-        }
-      });
-    }
+    let business = {
+      name: "Mi negocio",
+      plan: "free",
+      planName: "Plan Inicio",
+      planPrice: 0,
+      subscriptionStatus: "inactive",
+      cancelAtPeriodEnd: false
+    };
 
-    async function bootstrapApp(firebaseUser) {
-      const userRef = doc(db, "users", firebaseUser.uid);
-      const userSnap = await getDoc(userRef);
+    if (userSnap.exists()) {
+      const userData = userSnap.data();
 
-      let appUser = {
+      appUser = {
         uid: firebaseUser.uid,
         email: firebaseUser.email || "",
-        displayName: firebaseUser.displayName || "",
-        fullName: firebaseUser.displayName || ""
+        displayName: firebaseUser.displayName || userData.fullName || "",
+        fullName: userData.fullName || firebaseUser.displayName || "",
+        businessId: userData.businessId || "",
+        role: userData.role || "owner"
       };
 
-      let business = {
-        name: "Mi negocio",
-        plan: "free",
-        planName: "Plan Inicio",
-        planPrice: 0
-      };
+      if (userData.businessId) {
+        const businessRef = doc(db, "businesses", userData.businessId);
+        const businessSnap = await getDoc(businessRef);
 
-      if (userSnap.exists()) {
-        const userData = userSnap.data();
+        if (businessSnap.exists()) {
+          const businessData = businessSnap.data();
 
-        appUser = {
-          uid: firebaseUser.uid,
-          email: firebaseUser.email || "",
-          displayName: firebaseUser.displayName || userData.fullName || "",
-          fullName: userData.fullName || firebaseUser.displayName || "",
-          businessId: userData.businessId || "",
-          role: userData.role || "owner"
-        };
-
-        if (userData.businessId) {
-          const businessRef = doc(db, "businesses", userData.businessId);
-          const businessSnap = await getDoc(businessRef);
-
-          if (businessSnap.exists()) {
-            const businessData = businessSnap.data();
-
-            business = {
-              id: businessSnap.id,
-              ...businessData,
-              name: businessData.name || businessData.businessName || "Mi negocio",
-              plan: businessData.plan || "free",
-              planName:
-                businessData.planName ||
-                (businessData.plan === "pro" ? "Plan Pro" : "Plan Inicio"),
-              planPrice: Number(businessData.planPrice || 0)
-            };
-          }
+          business = {
+            id: businessSnap.id,
+            ...businessData,
+            name: businessData.name || businessData.businessName || "Mi negocio",
+            plan: businessData.plan || "free",
+            planName:
+              businessData.planName ||
+              (businessData.plan === "pro" ? "Plan Pro" : "Plan Inicio"),
+            planPrice: Number(businessData.planPrice || 0),
+            subscriptionStatus: businessData.subscriptionStatus || "inactive",
+            cancelAtPeriodEnd: Boolean(businessData.cancelAtPeriodEnd)
+          };
         }
       }
-
-      setState({
-        user: appUser,
-        business
-      });
-
-      updateSidebarProfile(appUser, business);
-      initRouter();
-      setupMobileSidebar();
     }
 
-    onAuthStateChanged(auth, async firebaseUser => {
-      if (!firebaseUser) {
-        window.location.href = "./login.html";
-        return;
-      }
-
-      try {
-        await bootstrapApp(firebaseUser);
-      } catch (error) {
-        console.error("Error al inicializar la app:", error);
-        showToast("No se pudo cargar la aplicación");
-      }
+    setState({
+      user: appUser,
+      business
     });
 
-    document.getElementById("logout-btn")?.addEventListener("click", async () => {
-      try {
-        await signOut(auth);
-        window.location.href = "./login.html";
-      } catch (error) {
-        console.error("Error al cerrar sesión:", error);
-        showToast("No se pudo cerrar sesión");
-      }
-    });
-  </script>
+    updateSidebarProfile(appUser, business);
+    initRouter();
+    setupMobileSidebar();
+  }
+
+  onAuthStateChanged(auth, async firebaseUser => {
+    if (!firebaseUser) {
+      window.location.href = "./login.html";
+      return;
+    }
+
+    try {
+      await bootstrapApp(firebaseUser);
+    } catch (error) {
+      console.error("Error al inicializar la app:", error);
+      showToast("No se pudo cargar la aplicación");
+    }
+  });
+
+  document.getElementById("logout-btn")?.addEventListener("click", async () => {
+    try {
+      await signOut(auth);
+      window.location.href = "./login.html";
+    } catch (error) {
+      console.error("Error al cerrar sesión:", error);
+      showToast("No se pudo cerrar sesión");
+    }
+  });
+</script>
 </body>
 </html>
