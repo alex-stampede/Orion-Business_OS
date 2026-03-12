@@ -1,5 +1,10 @@
 import { escapeHtml, formatDate } from "../helpers.js";
-import { showToast } from "../ui.js";
+import {
+  showToast,
+  openModal,
+  closeModal,
+  bindModalFormSubmit
+} from "../ui.js";
 import {
   listBusinessCollection,
   createClient,
@@ -17,7 +22,10 @@ function buildUsageDots(current = 0, limit = 3) {
   return `
     <div class="plan-usage-dots">
       ${Array.from({ length: limit })
-        .map((_, index) => `<span class="plan-usage-dot ${index < current ? "is-filled" : ""}"></span>`)
+        .map(
+          (_, index) =>
+            `<span class="plan-usage-dot ${index < current ? "is-filled" : ""}"></span>`
+        )
         .join("")}
     </div>
   `;
@@ -35,7 +43,7 @@ function renderClientPlanAlert() {
   }
 
   const current = clientsCache.length;
-  const limit = plan.limits.clients;
+  const limit = plan.limits.clients || 3;
 
   box.innerHTML = `
     <article class="app-panel plan-usage-card">
@@ -60,9 +68,11 @@ function renderClientPlanAlert() {
 }
 
 function applyClientFilters() {
-  const search = (document.getElementById("clients-search")?.value || "").toLowerCase().trim();
+  const search = (document.getElementById("clients-search")?.value || "")
+    .toLowerCase()
+    .trim();
 
-  filteredClients = clientsCache.filter(client => {
+  filteredClients = clientsCache.filter((client) => {
     const haystack = [
       client.name || "",
       client.contact || "",
@@ -81,59 +91,125 @@ function applyClientFilters() {
 function openClientModal(client = null) {
   const isEdit = Boolean(client);
 
-  const name = prompt("Empresa / Cliente", client?.name || "");
-  if (name === null) return;
+  openModal({
+    title: isEdit ? "Editar cliente" : "Nuevo cliente",
+    content: `
+      <form id="client-modal-form" style="display:grid; gap:16px;">
+        <p class="modal-note">
+          ${
+            isEdit
+              ? "Actualiza la información del cliente."
+              : "Registra un nuevo cliente dentro de tu base comercial."
+          }
+        </p>
 
-  const contact = prompt("Contacto", client?.contact || "");
-  if (contact === null) return;
+        <div class="modal-grid-2">
+          <div class="field">
+            <label for="client-name">Empresa / Cliente</label>
+            <input
+              id="client-name"
+              name="name"
+              type="text"
+              value="${escapeHtml(client?.name || "")}"
+              placeholder="Nombre del cliente o empresa"
+              required
+            />
+          </div>
 
-  const email = prompt("Correo", client?.email || "");
-  if (email === null) return;
+          <div class="field">
+            <label for="client-contact">Contacto</label>
+            <input
+              id="client-contact"
+              name="contact"
+              type="text"
+              value="${escapeHtml(client?.contact || "")}"
+              placeholder="Nombre del contacto"
+            />
+          </div>
 
-  const phone = prompt("Teléfono", client?.phone || "");
-  if (phone === null) return;
+          <div class="field">
+            <label for="client-email">Correo</label>
+            <input
+              id="client-email"
+              name="email"
+              type="email"
+              value="${escapeHtml(client?.email || "")}"
+              placeholder="correo@empresa.com"
+            />
+          </div>
 
-  const payload = {
-    name: name.trim(),
-    contact: contact.trim(),
-    email: email.trim(),
-    phone: phone.trim()
-  };
+          <div class="field">
+            <label for="client-phone">Teléfono</label>
+            <input
+              id="client-phone"
+              name="phone"
+              type="text"
+              value="${escapeHtml(client?.phone || "")}"
+              placeholder="33 0000 0000"
+            />
+          </div>
+        </div>
+      </form>
+    `,
+    actions: `
+      <button class="btn btn-secondary" type="button" id="cancel-client-modal">
+        Cancelar
+      </button>
+      <button class="btn btn-primary" type="submit" form="client-modal-form">
+        ${isEdit ? "Guardar cambios" : "Crear cliente"}
+      </button>
+    `
+  });
 
-  if (isEdit) {
-    updateClient(client.id, payload)
-      .then(() => {
+  document
+    .getElementById("cancel-client-modal")
+    ?.addEventListener("click", closeModal);
+
+  bindModalFormSubmit("client-modal-form", async (form) => {
+    const formData = new FormData(form);
+
+    const payload = {
+      name: String(formData.get("name") || "").trim(),
+      contact: String(formData.get("contact") || "").trim(),
+      email: String(formData.get("email") || "").trim(),
+      phone: String(formData.get("phone") || "").trim()
+    };
+
+    try {
+      if (isEdit) {
+        await updateClient(client.id, payload);
         showToast("Cliente actualizado");
-        return loadClients();
-      })
-      .catch(error => {
-        console.error(error);
-        showToast("No se pudo actualizar el cliente");
-      });
-  } else {
-    canCreateEntity("clients")
-      .then(permission => {
+      } else {
+        const permission = await canCreateEntity("clients");
+
         if (!permission.allowed) {
           showToast(getPlanLimitMessage("clients"));
           window.location.hash = "settings";
           return;
         }
 
-        return createClient(payload).then(() => {
-          showToast("Cliente creado");
-          return loadClients();
-        });
-      })
-      .catch(error => {
-        console.error(error);
-        showToast("No se pudo crear el cliente");
-      });
-  }
+        await createClient(payload);
+        showToast("Cliente creado");
+      }
+
+      closeModal();
+      await loadClients();
+    } catch (error) {
+      console.error(error);
+      showToast(
+        isEdit
+          ? "No se pudo actualizar el cliente"
+          : "No se pudo crear el cliente"
+      );
+    }
+  });
 }
 
 function renderClientRows() {
   const tbody = document.getElementById("clients-table-body");
   const count = document.getElementById("clients-count");
+
+  if (!tbody || !count) return;
 
   count.textContent = `${filteredClients.length} registros`;
 
@@ -154,13 +230,16 @@ function renderClientRows() {
       </tr>
     `;
 
-    document.getElementById("create-first-client-btn")?.addEventListener("click", () => openClientModal());
+    document
+      .getElementById("create-first-client-btn")
+      ?.addEventListener("click", () => openClientModal());
+
     return;
   }
 
   tbody.innerHTML = filteredClients
     .map(
-      client => `
+      (client) => `
       <tr>
         <td>${escapeHtml(client.name || "—")}</td>
         <td>${escapeHtml(client.contact || "—")}</td>
@@ -169,9 +248,15 @@ function renderClientRows() {
         <td>${client.createdAt?.toDate ? formatDate(client.createdAt.toDate()) : "—"}</td>
         <td>
           <div class="btn-row">
-            <button class="btn btn-secondary btn-sm js-edit-client" data-id="${client.id}" type="button">Editar</button>
-            <button class="btn btn-secondary btn-sm js-quote-client" data-id="${client.id}" type="button">Cotizar</button>
-            <button class="btn btn-secondary btn-sm js-delete-client" data-id="${client.id}" type="button">Eliminar</button>
+            <button class="btn btn-secondary btn-sm js-edit-client" data-id="${client.id}" type="button">
+              Editar
+            </button>
+            <button class="btn btn-secondary btn-sm js-quote-client" data-id="${client.id}" type="button">
+              Cotizar
+            </button>
+            <button class="btn btn-secondary btn-sm js-delete-client" data-id="${client.id}" type="button">
+              Eliminar
+            </button>
           </div>
         </td>
       </tr>
@@ -183,22 +268,22 @@ function renderClientRows() {
 }
 
 function bindClientActions() {
-  document.querySelectorAll(".js-edit-client").forEach(btn => {
+  document.querySelectorAll(".js-edit-client").forEach((btn) => {
     btn.onclick = () => {
-      const client = clientsCache.find(item => item.id === btn.dataset.id);
+      const client = clientsCache.find((item) => item.id === btn.dataset.id);
       if (client) openClientModal(client);
     };
   });
 
-  document.querySelectorAll(".js-quote-client").forEach(btn => {
+  document.querySelectorAll(".js-quote-client").forEach((btn) => {
     btn.onclick = () => {
       window.location.hash = `quote-editor?type=client&id=${btn.dataset.id}`;
     };
   });
 
-  document.querySelectorAll(".js-delete-client").forEach(btn => {
+  document.querySelectorAll(".js-delete-client").forEach((btn) => {
     btn.onclick = async () => {
-      const client = clientsCache.find(item => item.id === btn.dataset.id);
+      const client = clientsCache.find((item) => item.id === btn.dataset.id);
       if (!client) return;
 
       if (!confirm(`Eliminar cliente "${client.name}"?`)) return;
@@ -240,7 +325,9 @@ export function renderClients() {
         </div>
 
         <div class="btn-row">
-          <button class="btn btn-primary" id="new-client-btn" type="button">Nuevo cliente</button>
+          <button class="btn btn-primary" id="new-client-btn" type="button">
+            Nuevo cliente
+          </button>
         </div>
       </div>
 
@@ -251,7 +338,11 @@ export function renderClients() {
           <div class="mb-4">
             <div class="field">
               <label>Buscar</label>
-              <input id="clients-search" type="text" placeholder="Empresa, contacto, email, teléfono..." />
+              <input
+                id="clients-search"
+                type="text"
+                placeholder="Empresa, contacto, email, teléfono..."
+              />
             </div>
           </div>
 
@@ -288,6 +379,11 @@ export function renderClients() {
 export function initClients() {
   loadClients();
 
-  document.getElementById("new-client-btn")?.addEventListener("click", () => openClientModal());
-  document.getElementById("clients-search")?.addEventListener("input", applyClientFilters);
+  document
+    .getElementById("new-client-btn")
+    ?.addEventListener("click", () => openClientModal());
+
+  document
+    .getElementById("clients-search")
+    ?.addEventListener("input", applyClientFilters);
 }
