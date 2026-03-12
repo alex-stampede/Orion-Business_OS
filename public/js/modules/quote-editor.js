@@ -92,10 +92,8 @@ function updateLinkPanels() {
   const newLeadPanel = $("#quote-new-lead-panel");
 
   if (leadPanel) leadPanel.style.display = type === "lead" ? "block" : "none";
-  if (clientPanel)
-    clientPanel.style.display = type === "client" ? "block" : "none";
-  if (newLeadPanel)
-    newLeadPanel.style.display = type === "new-lead" ? "block" : "none";
+  if (clientPanel) clientPanel.style.display = type === "client" ? "block" : "none";
+  if (newLeadPanel) newLeadPanel.style.display = type === "new-lead" ? "block" : "none";
 }
 
 function readItems() {
@@ -135,9 +133,7 @@ function updateSummary() {
 
 function bindItemInputs() {
   document
-    .querySelectorAll(
-      ".item-name, .item-qty, .item-price, #quote-tax, #quote-currency",
-    )
+    .querySelectorAll(".item-name, .item-qty, .item-price, #quote-tax, #quote-currency")
     .forEach((input) => {
       input.removeEventListener("input", updateSummary);
       input.addEventListener("input", updateSummary);
@@ -307,6 +303,7 @@ function buildPdfPayload({
     logoUrl: settingsCache?.logoUrl || "",
     businessPhone: settingsCache?.businessPhone || "",
     businessEmail: settingsCache?.businessEmail || "",
+    quoteTheme: settingsCache?.quoteTheme || "green",
 
     paymentTermsEnabled: settingsCache?.paymentTermsEnabled || false,
     paymentTermsText: settingsCache?.paymentTermsText || "",
@@ -585,8 +582,7 @@ export async function initQuoteEditor() {
       let emailSnapshot = "";
       let phoneSnapshot = "";
 
-      const { linkType, existingLeadId, existingClientId } =
-        getSelectedLinkData();
+      const { linkType, existingLeadId, existingClientId } = getSelectedLinkData();
 
       if (linkType === "lead" && existingLeadId) {
         const lead = await getBusinessDocById("leads", existingLeadId);
