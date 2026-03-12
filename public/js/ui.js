@@ -126,6 +126,10 @@ export function syncUpgradeButton() {
 export function openModal({ title = "", content = "", actions = "" } = {}) {
   closeModal();
 
+  const previousOverflow = document.body.style.overflow;
+  document.body.dataset.previousOverflow = previousOverflow || "";
+  document.body.style.overflow = "hidden";
+
   const overlay = document.createElement("div");
   overlay.id = "app-modal-overlay";
   overlay.style.position = "fixed";
@@ -136,10 +140,14 @@ export function openModal({ title = "", content = "", actions = "" } = {}) {
   overlay.style.alignItems = "center";
   overlay.style.justifyContent = "center";
   overlay.style.padding = "20px";
+  overlay.style.backdropFilter = "blur(4px)";
+  overlay.style.webkitBackdropFilter = "blur(4px)";
 
   const modal = document.createElement("div");
   modal.id = "app-modal";
-  modal.style.width = "min(560px, 100%)";
+  modal.style.width = "min(720px, 100%)";
+  modal.style.maxHeight = "min(88vh, 900px)";
+  modal.style.overflowY = "auto";
   modal.style.borderRadius = "24px";
   modal.style.padding = "24px";
   modal.style.background =
@@ -150,15 +158,39 @@ export function openModal({ title = "", content = "", actions = "" } = {}) {
 
   modal.innerHTML = `
     <div style="display:grid; gap:16px;">
-      <div>
-        <h3 style="margin:0 0 8px; font-size:24px; line-height:1.1;">${title}</h3>
-        <div>${content}</div>
+      <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px;">
+        <div style="min-width:0;">
+          <h3 style="margin:0 0 8px; font-size:24px; line-height:1.1;">${title}</h3>
+        </div>
+
+        <button
+          type="button"
+          id="app-modal-close"
+          aria-label="Cerrar"
+          style="
+            width:42px;
+            height:42px;
+            min-width:42px;
+            border-radius:14px;
+            border:1px solid rgba(255,255,255,0.08);
+            background:rgba(255,255,255,0.05);
+            color:#fff;
+            font-size:22px;
+            cursor:pointer;
+          "
+        >
+          ×
+        </button>
       </div>
+
+      <div>${content}</div>
+
       <div class="btn-row">${actions}</div>
     </div>
   `;
 
   overlay.appendChild(modal);
+
   overlay.addEventListener("click", (event) => {
     if (event.target === overlay) {
       closeModal();
@@ -166,8 +198,76 @@ export function openModal({ title = "", content = "", actions = "" } = {}) {
   });
 
   document.body.appendChild(overlay);
+
+  $("#app-modal-close")?.addEventListener("click", closeModal);
+
+  document.addEventListener("keydown", handleModalEscape);
+
+  injectModalHelpers();
+}
+
+function handleModalEscape(event) {
+  if (event.key === "Escape") {
+    closeModal();
+  }
+}
+
+function injectModalHelpers() {
+  if ($("#app-modal-helper-styles")) return;
+
+  const style = document.createElement("style");
+  style.id = "app-modal-helper-styles";
+  style.textContent = `
+    .modal-grid-2{
+      display:grid;
+      grid-template-columns:repeat(2, minmax(0,1fr));
+      gap:16px;
+    }
+
+    .modal-note{
+      color:rgba(255,255,255,0.68);
+      font-size:14px;
+      line-height:1.6;
+      margin:0 0 4px;
+    }
+
+    @media (max-width: 640px){
+      #app-modal-overlay{
+        padding:12px !important;
+        align-items:flex-end !important;
+      }
+
+      #app-modal{
+        width:100% !important;
+        max-height:90vh !important;
+        border-radius:22px !important;
+        padding:16px !important;
+      }
+
+      .modal-grid-2{
+        grid-template-columns:1fr;
+      }
+    }
+  `;
+  document.head.appendChild(style);
 }
 
 export function closeModal() {
   $("#app-modal-overlay")?.remove();
+
+  const previousOverflow = document.body.dataset.previousOverflow ?? "";
+  document.body.style.overflow = previousOverflow;
+  delete document.body.dataset.previousOverflow;
+
+  document.removeEventListener("keydown", handleModalEscape);
+}
+
+export function bindModalFormSubmit(formId, handler) {
+  const form = document.getElementById(formId);
+  if (!form) return;
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await handler(form);
+  });
 }
