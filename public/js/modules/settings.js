@@ -17,6 +17,7 @@ let settingsCache = {
   nextQuoteNumber: 1,
   taxRate: 16,
   logoUrl: "",
+  quoteTheme: "green",
 
   paymentTermsEnabled: false,
   paymentTermsText: "",
@@ -33,6 +34,17 @@ let settingsCache = {
   warrantyText: "",
   commercialNotes: ""
 };
+
+const QUOTE_THEME_OPTIONS = [
+  { value: "green", label: "Verde Orion" },
+  { value: "black", label: "Negro" },
+  { value: "blue", label: "Azul" },
+  { value: "red", label: "Rojo" },
+  { value: "yellow", label: "Amarillo" },
+  { value: "orange", label: "Naranja" },
+  { value: "purple", label: "Morado" },
+  { value: "pink", label: "Rosa" }
+];
 
 function formatUnixDate(unixSeconds) {
   if (!unixSeconds) return "";
@@ -119,6 +131,72 @@ function renderPlanStatusPanels(plan = {}) {
   }
 
   return blocks.join("");
+}
+
+function renderQuoteThemeOptions() {
+  return QUOTE_THEME_OPTIONS.map(
+    (item) => `<option value="${item.value}">${item.label}</option>`
+  ).join("");
+}
+
+function renderQuoteThemePreview(theme = "green") {
+  const palette = {
+    green: { primary: "#00382E", accent: "#0b8c67", label: "Verde Orion" },
+    black: { primary: "#111111", accent: "#2b2b2b", label: "Negro" },
+    blue: { primary: "#0A84FF", accent: "#3B82F6", label: "Azul" },
+    red: { primary: "#B42318", accent: "#EF4444", label: "Rojo" },
+    yellow: { primary: "#B54708", accent: "#F59E0B", label: "Amarillo" },
+    orange: { primary: "#C2410C", accent: "#F97316", label: "Naranja" },
+    purple: { primary: "#6D28D9", accent: "#8B5CF6", label: "Morado" },
+    pink: { primary: "#BE185D", accent: "#EC4899", label: "Rosa" }
+  };
+
+  const current = palette[theme] || palette.green;
+
+  return `
+    <div style="display:grid; gap:10px; margin-top:14px;">
+      <div style="font-size:13px; color:rgba(255,255,255,.68);">
+        Vista previa: ${current.label}
+      </div>
+
+      <div style="
+        border-radius:18px;
+        overflow:hidden;
+        border:1px solid rgba(255,255,255,.08);
+        background:rgba(255,255,255,.03);
+        max-width:360px;
+      ">
+        <div style="
+          background:${current.primary};
+          color:#fff;
+          padding:16px 18px;
+          font-weight:700;
+          font-size:14px;
+        ">
+          Cotización
+        </div>
+
+        <div style="padding:16px 18px; display:grid; gap:10px;">
+          <div style="height:10px; width:70%; background:rgba(255,255,255,.08); border-radius:999px;"></div>
+          <div style="height:10px; width:48%; background:rgba(255,255,255,.08); border-radius:999px;"></div>
+
+          <div style="
+            margin-top:6px;
+            display:inline-flex;
+            width:max-content;
+            padding:8px 12px;
+            border-radius:12px;
+            background:${current.accent};
+            color:#fff;
+            font-size:12px;
+            font-weight:700;
+          ">
+            Total / Resumen
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 export function renderSettings(state = {}) {
@@ -238,6 +316,40 @@ export function renderSettings(state = {}) {
             </div>
 
             <div id="logo-preview-box" class="mt-5"></div>
+
+            <article class="app-panel" style="margin-top:24px;">
+              <div class="card-head">
+                <strong>Color de cotización</strong>
+                <span>${plan.isPro ? "Branding Pro" : "Disponible en Plan Pro"}</span>
+              </div>
+
+              <div class="field">
+                <label for="quote-theme">
+                  Color principal del PDF
+                  ${
+                    plan.isPro
+                      ? ""
+                      : `<span class="badge-pro" style="margin-left:8px;">PRO</span>`
+                  }
+                </label>
+
+                <select id="quote-theme" ${plan.isPro ? "" : "disabled"}>
+                  ${renderQuoteThemeOptions()}
+                </select>
+              </div>
+
+              <p class="muted" style="margin-top:10px;">
+                ${
+                  plan.isPro
+                    ? "Personaliza el color principal de tus cotizaciones para que se adapten mejor al estilo de tu marca."
+                    : "Desbloquea colores personalizados para tus cotizaciones con Plan Pro."
+                }
+              </p>
+
+              <div id="quote-theme-preview">
+                ${renderQuoteThemePreview(settingsCache.quoteTheme || "green")}
+              </div>
+            </article>
 
             <article class="app-panel" style="margin-top:24px;">
               <div class="card-head">
@@ -371,6 +483,16 @@ function renderLogoPreview() {
   `;
 }
 
+function bindQuoteThemePreview() {
+  const themeSelect = $("#quote-theme");
+  const preview = $("#quote-theme-preview");
+  if (!themeSelect || !preview) return;
+
+  themeSelect.addEventListener("change", () => {
+    preview.innerHTML = renderQuoteThemePreview(themeSelect.value || "green");
+  });
+}
+
 async function loadSettingsIntoForm() {
   const settings = await getBusinessSettings();
   settingsCache = { ...settingsCache, ...(settings || {}) };
@@ -381,6 +503,7 @@ async function loadSettingsIntoForm() {
   $("#quote-prefix").value = settingsCache.quotePrefix || "COT";
   $("#quote-next-number").value = settingsCache.nextQuoteNumber || 1;
   $("#tax-rate").value = settingsCache.taxRate || 16;
+  if ($("#quote-theme")) $("#quote-theme").value = settingsCache.quoteTheme || "green";
 
   $("#payment-terms-enabled").checked = Boolean(settingsCache.paymentTermsEnabled);
   $("#payment-terms-text").value = settingsCache.paymentTermsText || "";
@@ -398,6 +521,9 @@ async function loadSettingsIntoForm() {
   $("#commercial-notes").value = settingsCache.commercialNotes || "";
 
   renderLogoPreview();
+  if ($("#quote-theme-preview")) {
+    $("#quote-theme-preview").innerHTML = renderQuoteThemePreview(settingsCache.quoteTheme || "green");
+  }
 }
 
 function bindBillingButtons() {
@@ -426,7 +552,10 @@ export function initSettings() {
   const form = $("#settings-form");
   if (!form) return;
 
-  loadSettingsIntoForm();
+  loadSettingsIntoForm().then(() => {
+    bindQuoteThemePreview();
+  });
+
   bindBillingButtons();
 
   form.addEventListener("submit", async event => {
@@ -435,6 +564,8 @@ export function initSettings() {
     try {
       let logoUrl = settingsCache.logoUrl || "";
       const logoFile = $("#logo-file")?.files?.[0] || null;
+      const state = getState();
+      const isPro = (state.business?.plan || "free") === "pro";
 
       if (logoFile) {
         logoUrl = await uploadBusinessLogo(logoFile);
@@ -449,6 +580,7 @@ export function initSettings() {
         nextQuoteNumber: Number($("#quote-next-number")?.value || 1),
         taxRate: Number($("#tax-rate")?.value || 16),
         logoUrl,
+        quoteTheme: isPro ? ($("#quote-theme")?.value || "green") : "green",
 
         paymentTermsEnabled: $("#payment-terms-enabled")?.checked || false,
         paymentTermsText: $("#payment-terms-text")?.value.trim() || "",
@@ -469,7 +601,6 @@ export function initSettings() {
       await saveBusinessSettings(payload);
       settingsCache = { ...settingsCache, ...payload };
 
-      const state = getState();
       const business = state.business || {};
 
       setState({
