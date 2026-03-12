@@ -447,7 +447,7 @@ function buildQuoteHTML(quote = {}) {
   `;
 }
 
-export async function exportQuoteToPDF(quote = {}, existingWindow = null) {
+export async function exportQuoteToPDF(quote = {}) {
   const html = buildQuoteHTML(quote);
 
   const blob = new Blob([html], { type: "text/html" });
@@ -460,12 +460,22 @@ export async function exportQuoteToPDF(quote = {}, existingWindow = null) {
   iframe.style.width = "0";
   iframe.style.height = "0";
   iframe.style.border = "0";
+  iframe.style.opacity = "0";
+  iframe.setAttribute("aria-hidden", "true");
 
   document.body.appendChild(iframe);
 
   iframe.onload = () => {
     setTimeout(() => {
-      iframe.contentWindow.print();
+      try {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+      } finally {
+        setTimeout(() => {
+          URL.revokeObjectURL(url);
+          iframe.remove();
+        }, 1500);
+      }
     }, 350);
   };
 
