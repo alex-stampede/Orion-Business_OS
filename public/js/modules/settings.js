@@ -34,17 +34,30 @@ let settingsCache = {
   commercialNotes: ""
 };
 
+function formatUnixDate(unixSeconds) {
+  if (!unixSeconds) return "";
+  return new Date(unixSeconds * 1000).toLocaleDateString("es-MX", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric"
+  });
+}
+
 function getPlanUI(state = {}) {
   const business = state.business || {};
   const isPro = business.plan === "pro";
   const subscriptionStatus = business.subscriptionStatus || "inactive";
   const cancelAtPeriodEnd = Boolean(business.cancelAtPeriodEnd);
+  const currentPeriodEnd = business.currentPeriodEnd || business.subscriptionEndsAt || null;
+  const paymentIssue = Boolean(business.paymentIssue);
 
   return {
     isPro,
     planName: isPro ? "Plan Pro" : "Plan Inicio",
     subscriptionStatus,
     cancelAtPeriodEnd,
+    currentPeriodEnd,
+    paymentIssue,
     priceText: isPro ? "$179 MXN / mes" : "Gratis"
   };
 }
@@ -64,6 +77,48 @@ function renderSubscriptionBadge(subscriptionStatus = "inactive") {
       ${labelMap[subscriptionStatus] || subscriptionStatus}
     </span>
   `;
+}
+
+function renderPlanStatusPanels(plan = {}) {
+  const blocks = [];
+
+  if (plan.paymentIssue) {
+    blocks.push(`
+      <div class="app-panel" style="margin-top:16px; padding:16px 18px;">
+        <strong style="display:block; margin-bottom:6px;">Tuvimos un problema con tu pago</strong>
+        <p class="muted" style="margin-bottom:10px;">
+          No pudimos procesar el cobro de tu suscripción. Revisa tu método de pago para evitar interrupciones en tu cuenta.
+        </p>
+        <div class="btn-row mt-4">
+          <button class="btn btn-primary" type="button" id="manage-subscription-btn">
+            Actualizar método de pago
+          </button>
+        </div>
+      </div>
+    `);
+  }
+
+  if (plan.cancelAtPeriodEnd) {
+    blocks.push(`
+      <div class="app-panel" style="margin-top:16px; padding:16px 18px;">
+        <strong style="display:block; margin-bottom:6px;">Tu plan terminará pronto</strong>
+        <p class="muted" style="margin-bottom:10px;">
+          Tu Plan Pro sigue activo por ahora, pero está programado para cancelarse el
+          <strong>${formatUnixDate(plan.currentPeriodEnd) || "final del periodo actual"}</strong>.
+        </p>
+        <p class="muted">
+          Reactiva tu suscripción antes de esa fecha para no perder acceso a leads, clientes y cotizaciones ilimitadas.
+        </p>
+        <div class="btn-row mt-4">
+          <button class="btn btn-primary" type="button" id="manage-subscription-btn">
+            Reactivar / administrar suscripción
+          </button>
+        </div>
+      </div>
+    `);
+  }
+
+  return blocks.join("");
 }
 
 export function renderSettings(state = {}) {
@@ -101,33 +156,28 @@ export function renderSettings(state = {}) {
           </p>
 
           ${
-            plan.cancelAtPeriodEnd
+            !plan.cancelAtPeriodEnd && !plan.paymentIssue
               ? `
-              <div class="app-panel" style="margin-top:16px; padding:14px 16px;">
-                <strong style="display:block; margin-bottom:6px;">Cancelación programada</strong>
-                <p class="muted">
-                  Tu Plan Pro seguirá activo hasta el final del periodo actual.
-                </p>
-              </div>
-            `
+                <div class="btn-row mt-4">
+                  ${
+                    plan.isPro
+                      ? `
+                        <button class="btn btn-secondary" type="button" id="manage-subscription-btn">
+                          Administrar suscripción
+                        </button>
+                      `
+                      : `
+                        <button class="btn btn-primary" type="button" id="upgrade-pro-btn">
+                          Mejorar a Plan Pro · $179 MXN/mes
+                        </button>
+                      `
+                  }
+                </div>
+              `
               : ""
           }
 
-          <div class="btn-row mt-4">
-            ${
-              plan.isPro
-                ? `
-                <button class="btn btn-secondary" type="button" id="manage-subscription-btn">
-                  Administrar suscripción
-                </button>
-              `
-                : `
-                <button class="btn btn-primary" type="button" id="upgrade-pro-btn">
-                  Mejorar a Plan Pro · $179 MXN/mes
-                </button>
-              `
-            }
-          </div>
+          ${renderPlanStatusPanels(plan)}
         </article>
 
         <article class="app-panel">
