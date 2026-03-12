@@ -123,7 +123,7 @@ export function renderSettings(state = {}) {
               `
                 : `
                 <button class="btn btn-primary" type="button" id="upgrade-pro-btn">
-                  Mejorar a Plan Pro · $149 MXN/mes
+                  Mejorar a Plan Pro · $179 MXN/mes
                 </button>
               `
             }
