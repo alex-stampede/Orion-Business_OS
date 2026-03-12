@@ -522,46 +522,39 @@ export async function initQuoteEditor() {
   addItemBtn?.addEventListener("click", () => addItemRow());
 
 previewPdfBtn?.addEventListener("click", async () => {
-  showToast("Para conservar los colores del PDF en Chrome o Safari, activa “Gráficos en segundo plano” al imprimir.");
+  showToast("Preparando PDF... Recuerda activar “Gráficos en segundo plano” en Chrome o Safari.");
 
-  const popup = window.open("", "_blank", "width=980,height=760");
-  if (!popup) {
-    showToast("El navegador bloqueó la ventana del PDF");
-    return;
-  }
+  const currency = $("#quote-currency")?.value || "MXN";
+  const taxRate = Number($("#quote-tax")?.value || 0);
+  const items = readItems();
+  const { subtotal, taxes, total } = calculateTotals(items, taxRate);
 
-    const currency = $("#quote-currency")?.value || "MXN";
-    const taxRate = Number($("#quote-tax")?.value || 0);
-    const items = readItems();
-    const { subtotal, taxes, total } = calculateTotals(items, taxRate);
+  try {
+    const currentQuote = editingQuoteId
+      ? await getQuoteById(editingQuoteId)
+      : null;
 
-    try {
-      const currentQuote = editingQuoteId
-        ? await getQuoteById(editingQuoteId)
-        : null;
-
-      const pdfPayload = buildPdfPayload({
-        quoteBase: {
-          ...(currentQuote || {}),
-          clientName: $("#quote-client")?.value || "Cliente",
-          notes: $("#quote-notes")?.value || "",
-          currency,
-        },
-        items,
-        subtotal,
-        taxes,
-        total,
+    const pdfPayload = buildPdfPayload({
+      quoteBase: {
+        ...(currentQuote || {}),
+        clientName: $("#quote-client")?.value || "Cliente",
+        notes: $("#quote-notes")?.value || "",
         currency,
-        fallbackFolio: currentQuote?.folio || defaults.folio,
-      });
+      },
+      items,
+      subtotal,
+      taxes,
+      total,
+      currency,
+      fallbackFolio: currentQuote?.folio || defaults.folio,
+    });
 
-      await exportQuoteToPDF(pdfPayload, popup);
-    } catch (error) {
-      console.error(error);
-      popup.close();
-      showToast("No se pudo generar el PDF");
-    }
-  });
+    await exportQuoteToPDF(pdfPayload);
+  } catch (error) {
+    console.error(error);
+    showToast("No se pudo generar el PDF");
+  }
+});
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
