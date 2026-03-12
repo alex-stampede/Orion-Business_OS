@@ -936,3 +936,203 @@
     width: 100%;
   }
 }
+/* =========================
+   ORION APP — MOBILE POLISH
+========================= */
+
+@media (max-width: 640px) {
+
+  /* Base general */
+  .app-body .app-shell {
+    width: calc(100% - 12px);
+    margin: 6px auto;
+    gap: 10px;
+  }
+
+  .app-body .app-topbar,
+  .app-body .app-view,
+  .app-body .app-panel {
+    border-radius: 20px !important;
+  }
+
+  .app-body .app-topbar {
+    padding: 14px !important;
+    margin-bottom: 10px !important;
+  }
+
+  .app-body .app-view {
+    padding: 14px !important;
+  }
+
+  .app-body .app-panel {
+    padding: 14px !important;
+  }
+
+  /* Header superior */
+  .app-body .app-topbar-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .app-body .mobile-topbar-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .app-body .mobile-menu-btn {
+    width: 52px;
+    height: 52px;
+    min-width: 52px;
+    border-radius: 16px;
+    padding: 0;
+  }
+
+  .app-body .mobile-title-wrap {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .app-body .mobile-title-wrap .eyebrow-sm,
+  .app-body .app-topbar-copy .eyebrow-sm {
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    margin-bottom: 6px;
+  }
+
+  .app-body #page-title {
+    font-size: clamp(34px, 10vw, 54px) !important;
+    line-height: 0.96 !important;
+    letter-spacing: -0.05em;
+    margin: 0;
+    word-break: break-word;
+  }
+
+  /* Botones topbar */
+  .app-body .topbar-right {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 10px;
+    width: 100%;
+    margin-left: 0 !important;
+    padding-left: 0 !important;
+  }
+
+  .app-body .topbar-right .btn {
+    width: 100%;
+    min-height: 54px;
+    border-radius: 16px;
+    justify-content: center;
+    text-align: center;
+    font-size: 15px;
+    padding: 0 14px;
+  }
+
+  /* Headers internos de módulos */
+  .app-body .app-view-header {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .app-body .app-view-title h2,
+  .app-body .app-view h2 {
+    font-size: clamp(30px, 8.4vw, 42px) !important;
+    line-height: 1.02 !important;
+    letter-spacing: -0.045em;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    margin-bottom: 8px;
+  }
+
+  .app-body .app-view-title p,
+  .app-body .app-view .muted {
+    font-size: 15px;
+    line-height: 1.65;
+  }
+
+  /* Cards métricas dashboard */
+  .app-body .metrics-band,
+  .app-body .dashboard-grid,
+  .app-body .app-panels-2,
+  .app-body .form-grid-2,
+  .app-body .form-grid-3 {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .app-body .metric-card,
+  .app-body .kpi-card,
+  .app-body .stat-card {
+    padding: 16px !important;
+    border-radius: 18px !important;
+  }
+
+  /* Actividad reciente / listas */
+  .app-body .activity-item {
+    padding: 14px 14px;
+    border-radius: 16px;
+  }
+
+  .app-body .card-head {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  /* Campos */
+  .app-body .field input,
+  .app-body .field select,
+  .app-body .field textarea {
+    min-height: 52px;
+    border-radius: 16px;
+    font-size: 16px; /* evita zoom raro en iPhone */
+  }
+
+  /* Sidebar móvil */
+  .app-body .sidebar {
+    border-radius: 20px !important;
+    padding: 14px !important;
+  }
+
+  .app-body .sidebar-user-card,
+  .app-body .sidebar-logout {
+    border-radius: 16px !important;
+  }
+
+  /* Tablas: que no rompan el layout */
+  .app-body .table-shell {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 16px;
+  }
+
+  .app-body .data-table {
+    min-width: 760px !important;
+  }
+
+  /* Botones dentro de módulos */
+  .app-body .btn-row {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .app-body .btn-row .btn {
+    width: 100%;
+  }
+
+  /* Cotizaciones / leads / clientes: espacio arriba */
+  .app-body .table-shell,
+  .app-body .items-list,
+  .app-body .activity-list {
+    margin-top: 8px;
+  }
+}
