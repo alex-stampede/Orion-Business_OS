@@ -42,6 +42,16 @@ function quoteStatusOptions(current) {
     .join("");
 }
 
+function buildUsageDots(current = 0, limit = 3) {
+  return `
+    <div class="plan-usage-dots">
+      ${Array.from({ length: limit })
+        .map((_, index) => `<span class="plan-usage-dot ${index < current ? "is-filled" : ""}"></span>`)
+        .join("")}
+    </div>
+  `;
+}
+
 function renderQuotePlanAlert() {
   const box = document.getElementById("quotes-plan-alert");
   if (!box) return;
@@ -57,20 +67,24 @@ function renderQuotePlanAlert() {
   const limit = plan.limits.quotes;
 
   box.innerHTML = `
-  <article class="app-panel">
-    <div class="card-head">
-      <strong>${plan.name}</strong>
-      <span>${current}/${limit} cotizaciones usadas</span>
-    </div>
-    <p class="muted">
-      Actualiza a <strong>Plan Pro</strong> para tener cotizaciones ilimitadas.
-    </p>
-    <div class="btn-row mt-4">
-      <a href="#settings" class="btn btn-secondary btn-sm">
-        Actualizar a Plan Pro · $149 MXN / mes
-      </a>
-    </div>
-  </article>
+    <article class="app-panel plan-usage-card">
+      <div class="card-head">
+        <strong>Plan Inicio</strong>
+        <span>${current}/${limit} cotizaciones usadas</span>
+      </div>
+
+      ${buildUsageDots(current, limit)}
+
+      <p class="muted">
+        Actualiza a <strong>Plan Pro</strong> para tener cotizaciones ilimitadas.
+      </p>
+
+      <div class="btn-row mt-4">
+        <a href="#settings" class="btn btn-secondary btn-sm">
+          Actualizar a Plan Pro · $179 MXN / mes
+        </a>
+      </div>
+    </article>
   `;
 }
 
@@ -105,19 +119,19 @@ function renderRows() {
 
   if (!filteredQuotes.length) {
     tbody.innerHTML = `
-    <tr>
-      <td colspan="7">
-        <div style="padding:40px;text-align:center">
-          <h3>Aún no has creado cotizaciones</h3>
-          <p class="muted">
-            Empieza generando tu primera propuesta comercial.
-          </p>
-          <a href="#quote-editor" class="btn btn-primary">
-            Crear cotización
-          </a>
-        </div>
-      </td>
-    </tr>
+      <tr>
+        <td colspan="7">
+          <div style="padding:40px;text-align:center">
+            <h3>Aún no has creado cotizaciones</h3>
+            <p class="muted">
+              Empieza generando tu primera propuesta comercial.
+            </p>
+            <a href="#quote-editor" class="btn btn-primary">
+              Crear cotización
+            </a>
+          </div>
+        </td>
+      </tr>
     `;
     return;
   }
@@ -230,74 +244,70 @@ function bindActions() {
 
 export function renderQuotes() {
   return `
-  <section class="app-view glass">
-    <div class="app-view-header">
-      <div class="app-view-title">
-        <p class="eyebrow-sm">Cotizaciones</p>
-        <h2>Control de propuestas comerciales</h2>
+    <section class="app-view glass">
+      <div class="app-view-header">
+        <div class="app-view-title">
+          <p class="eyebrow-sm">Cotizaciones</p>
+          <h2>Control de propuestas comerciales</h2>
+        </div>
+
+        <div class="btn-row">
+          <a href="#quote-editor" class="btn btn-primary">Nueva cotización</a>
+        </div>
       </div>
 
-      <div class="btn-row">
-        <a href="#quote-editor" class="btn btn-primary">Nueva cotización</a>
+      <div class="app-view-grid">
+        <div id="quotes-plan-alert"></div>
+
+        <article class="app-panel">
+          <div class="form-grid-2 mb-4">
+            <div class="field">
+              <label>Buscar</label>
+              <input id="quotes-search" type="text" placeholder="Folio o cliente"/>
+            </div>
+
+            <div class="field">
+              <label>Estatus</label>
+              <select id="quotes-filter-status">
+                <option value="">Todos</option>
+                <option value="draft">Borrador</option>
+                <option value="sent">Enviada</option>
+                <option value="pending">Pendiente</option>
+                <option value="negotiating">Negociando</option>
+                <option value="won">Ganada</option>
+                <option value="lost">Perdida</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="card-head">
+            <strong>Listado de cotizaciones</strong>
+            <span id="quotes-count">Cargando...</span>
+          </div>
+
+          <div class="table-shell">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Folio</th>
+                  <th>Cliente</th>
+                  <th>Fecha</th>
+                  <th>Total</th>
+                  <th>Estatus</th>
+                  <th>Vinculado a</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="quotes-table-body">
+                <tr>
+                  <td colspan="7">Cargando cotizaciones...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
       </div>
-    </div>
-
-    <div class="app-view-grid">
-      <div id="quotes-plan-alert"></div>
-
-      <article class="app-panel">
-
-        <div class="form-grid-2 mb-4">
-
-          <div class="field">
-            <label>Buscar</label>
-            <input id="quotes-search" type="text" placeholder="Folio o cliente"/>
-          </div>
-
-          <div class="field">
-            <label>Estatus</label>
-            <select id="quotes-filter-status">
-              <option value="">Todos</option>
-              <option value="draft">Borrador</option>
-              <option value="sent">Enviada</option>
-              <option value="pending">Pendiente</option>
-              <option value="negotiating">Negociando</option>
-              <option value="won">Ganada</option>
-              <option value="lost">Perdida</option>
-            </select>
-          </div>
-
-        </div>
-
-        <div class="card-head">
-          <strong>Listado de cotizaciones</strong>
-          <span id="quotes-count">Cargando...</span>
-        </div>
-
-        <div class="table-shell">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Folio</th>
-                <th>Cliente</th>
-                <th>Fecha</th>
-                <th>Total</th>
-                <th>Estatus</th>
-                <th>Vinculado a</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody id="quotes-table-body">
-              <tr>
-                <td colspan="7">Cargando cotizaciones...</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-      </article>
-    </div>
-  </section>
+    </section>
   `;
 }
 
