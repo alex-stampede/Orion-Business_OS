@@ -231,41 +231,42 @@ function bindActions() {
     };
   });
 
-  document.querySelectorAll(".js-download-quote").forEach((btn) => {
-    btn.onclick = async () => {
-      const quoteId = btn.dataset.id;
+document.querySelectorAll(".js-download-quote").forEach(btn => {
+  btn.onclick = async () => {
+    const quoteId = btn.dataset.id;
 
-      const [quote, items, settings] = await Promise.all([
-        getQuoteById(quoteId),
-        getQuoteItems(quoteId),
-        getBusinessSettings()
-      ]);
+    const [quote, items, settings] = await Promise.all([
+      getQuoteById(quoteId),
+      getQuoteItems(quoteId),
+      getBusinessSettings()
+    ]);
 
-      exportQuoteToPDF({
-        ...quote,
-        items,
-        businessName: settings?.businessName || "",
-        logoUrl: settings?.logoUrl || "",
-        businessPhone: settings?.businessPhone || "",
-        businessEmail: settings?.businessEmail || "",
+    exportQuoteToPDF({
+      ...quote,
+      items,
+      businessName: settings?.businessName || "",
+      logoUrl: settings?.logoUrl || "",
+      businessPhone: settings?.businessPhone || "",
+      businessEmail: settings?.businessEmail || "",
+      quoteTheme: settings?.quoteTheme || "green",
 
-        paymentTermsEnabled: settings?.paymentTermsEnabled,
-        paymentTermsText: settings?.paymentTermsText,
+      paymentTermsEnabled: settings?.paymentTermsEnabled,
+      paymentTermsText: settings?.paymentTermsText,
 
-        bankInfoEnabled: settings?.bankInfoEnabled,
-        bankName: settings?.bankName,
-        bankAccountHolder: settings?.bankAccountHolder,
-        bankAccountNumber: settings?.bankAccountNumber,
-        bankClabe: settings?.bankClabe,
+      bankInfoEnabled: settings?.bankInfoEnabled,
+      bankName: settings?.bankName,
+      bankAccountHolder: settings?.bankAccountHolder,
+      bankAccountNumber: settings?.bankAccountNumber,
+      bankClabe: settings?.bankClabe,
 
-        commercialTermsEnabled: settings?.commercialTermsEnabled,
-        deliveryTime: settings?.deliveryTime,
-        quoteValidityText: settings?.quoteValidityText,
-        warrantyText: settings?.warrantyText,
-        commercialNotes: settings?.commercialNotes
-      });
-    };
-  });
+      commercialTermsEnabled: settings?.commercialTermsEnabled,
+      deliveryTime: settings?.deliveryTime,
+      quoteValidityText: settings?.quoteValidityText,
+      warrantyText: settings?.warrantyText,
+      commercialNotes: settings?.commercialNotes
+    });
+  };
+});
 }
 
 export function renderQuotes() {
