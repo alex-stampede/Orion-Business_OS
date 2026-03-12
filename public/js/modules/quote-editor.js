@@ -404,37 +404,63 @@ export function renderQuoteEditor() {
             </div>
 
             <div id="quote-new-lead-panel" style="display:none; margin-top:16px;">
-              <div class="form-grid-2">
-                <div class="field">
-                  <label for="new-lead-name">Nombre</label>
-                  <input id="new-lead-name" type="text" />
-                </div>
-                <div class="field">
-                  <label for="new-lead-company">Empresa</label>
-                  <input id="new-lead-company" type="text" />
-                </div>
-                <div class="field">
-                  <label for="new-lead-email">Email</label>
-                  <input id="new-lead-email" type="email" />
-                </div>
-                <div class="field">
-                  <label for="new-lead-phone">Teléfono</label>
-                  <input id="new-lead-phone" type="text" />
-                </div>
-                <div class="field">
-                  <label for="new-lead-source">Origen</label>
-                  <input id="new-lead-source" type="text" placeholder="Manual" />
-                </div>
-                <div class="field">
-                  <label for="new-lead-status">Estatus</label>
-                  <select id="new-lead-status">
-                    <option>Nuevo</option>
-                    <option>Contactado</option>
-                    <option>Cotización enviada</option>
-                  </select>
-                </div>
-              </div>
-            </div>
+  <div class="form-grid-2">
+    <div class="field">
+      <label for="new-lead-company">Empresa / Cliente</label>
+      <input
+        id="new-lead-company"
+        type="text"
+        placeholder="Nombre del cliente o empresa"
+      />
+    </div>
+
+    <div class="field">
+      <label for="new-lead-name">Contacto</label>
+      <input
+        id="new-lead-name"
+        type="text"
+        placeholder="Nombre del contacto"
+      />
+    </div>
+
+    <div class="field">
+      <label for="new-lead-email">Email</label>
+      <input
+        id="new-lead-email"
+        type="email"
+        placeholder="correo@empresa.com"
+      />
+    </div>
+
+    <div class="field">
+      <label for="new-lead-phone">Teléfono</label>
+      <input
+        id="new-lead-phone"
+        type="text"
+        placeholder="33 0000 0000"
+      />
+    </div>
+
+    <div class="field">
+      <label for="new-lead-source">¿De dónde llegó?</label>
+      <input
+        id="new-lead-source"
+        type="text"
+        placeholder="Ej. WhatsApp, Facebook, Referido, Sitio web"
+        value="Manual"
+      />
+    </div>
+
+    <div class="field">
+      <label for="new-lead-status">Estatus</label>
+      <select id="new-lead-status">
+        <option>Nuevo</option>
+        <option>Contactado</option>
+        <option>Cotización enviada</option>
+      </select>
+    </div>
+  </div>
+</div>
 
             <div class="card-head" style="margin-top:24px;">
               <strong>Conceptos</strong>
