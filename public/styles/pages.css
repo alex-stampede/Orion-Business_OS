@@ -1168,3 +1168,229 @@
 .sidebar-support .support-email:hover{
   opacity:.85;
 }
+/* ========================================
+   ORION BUSINESS OS — PLAN / PRO / MODALS
+======================================== */
+
+/* ----- Tarjetas de uso del plan ----- */
+
+.plan-usage-card {
+  display: grid;
+  gap: 12px;
+}
+
+.plan-usage-dots {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.plan-usage-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.plan-usage-dot.is-filled {
+  background: linear-gradient(135deg, #0b8c67, #18c58c);
+  border-color: rgba(44, 230, 166, 0.45);
+  box-shadow: 0 0 16px rgba(44, 230, 166, 0.18);
+}
+
+/* ----- Botones disabled / PRO ----- */
+
+.btn-disabled,
+button:disabled.btn-disabled {
+  opacity: 0.52;
+  cursor: not-allowed;
+  pointer-events: auto;
+  filter: grayscale(0.08);
+}
+
+.badge-pro {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 8px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.10);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+}
+
+/* ----- Empty states en tablas ----- */
+
+.table-empty-state {
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.table-empty-state h3 {
+  margin: 0 0 10px;
+}
+
+.table-empty-state .muted {
+  max-width: 520px;
+  margin: 0 auto 16px;
+}
+
+/* ----- Tablas / acciones ----- */
+
+.table-shell {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 16px;
+}
+
+.data-table td .btn-row,
+.data-table th .btn-row {
+  gap: 8px;
+}
+
+.data-table .btn-sm {
+  min-height: 36px;
+  padding-inline: 12px;
+}
+
+/* ----- Modal Orion ----- */
+
+#app-modal-overlay {
+  animation: modalFadeIn 0.18s ease;
+}
+
+#app-modal {
+  animation: modalLiftIn 0.2s ease;
+}
+
+#app-modal .field input,
+#app-modal .field select,
+#app-modal .field textarea {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+  border-radius: 16px;
+  padding: 12px 14px;
+  outline: none;
+}
+
+#app-modal .field textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+#app-modal .field input::placeholder,
+#app-modal .field textarea::placeholder {
+  color: rgba(255, 255, 255, 0.38);
+}
+
+#app-modal .field label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+#app-modal .btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+#app-modal .modal-note {
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+#app-modal .modal-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+/* ----- Tarjetas / paneles mejor consistentes ----- */
+
+.app-panel .card-head + .plan-usage-dots {
+  margin-top: -2px;
+}
+
+.app-panel .card-head + .muted,
+.plan-usage-card .muted {
+  margin-top: 0;
+}
+
+/* ----- Soporte visual de acciones ----- */
+
+.btn-row .btn + .btn-disabled,
+.btn-row .btn-disabled + .btn {
+  margin-left: 0;
+}
+
+/* ----- Animaciones sutiles ----- */
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalLiftIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ----- Mobile ----- */
+
+@media (max-width: 640px) {
+  .plan-usage-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 5px;
+  }
+
+  .badge-pro {
+    margin-left: 6px;
+    font-size: 9px;
+    padding: 3px 6px;
+  }
+
+  #app-modal .modal-grid-2 {
+    grid-template-columns: 1fr;
+  }
+
+  #app-modal .btn-row {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  #app-modal .btn-row .btn {
+    width: 100%;
+  }
+
+  .table-empty-state {
+    padding: 28px 14px;
+  }
+}
