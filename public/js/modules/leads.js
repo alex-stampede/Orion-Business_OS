@@ -116,44 +116,60 @@ ${
 </p>
 
 <div class="modal-grid-2">
+  <div class="field">
+    <label>Empresa / Cliente</label>
+    <input
+      id="lead-company"
+      type="text"
+      placeholder="Nombre del cliente o empresa"
+    />
+  </div>
 
-<div class="field">
-<label>Nombre</label>
-<input name="name" value="${escapeHtml(lead?.name || "")}" required>
-</div>
+  <div class="field">
+    <label>Contacto</label>
+    <input
+      id="lead-name"
+      type="text"
+      placeholder="Nombre del contacto"
+    />
+  </div>
 
-<div class="field">
-<label>Empresa</label>
-<input name="company" value="${escapeHtml(lead?.company || "")}">
-</div>
+  <div class="field">
+    <label>Email</label>
+    <input
+      id="lead-email"
+      type="email"
+      placeholder="correo@empresa.com"
+    />
+  </div>
 
-<div class="field">
-<label>Email</label>
-<input name="email" value="${escapeHtml(lead?.email || "")}">
-</div>
+  <div class="field">
+    <label>Teléfono</label>
+    <input
+      id="lead-phone"
+      type="text"
+      placeholder="33 0000 0000"
+    />
+  </div>
 
-<div class="field">
-<label>Teléfono</label>
-<input name="phone" value="${escapeHtml(lead?.phone || "")}">
-</div>
+  <div class="field">
+    <label>¿De dónde llegó?</label>
+    <input
+      id="lead-source"
+      type="text"
+      value="Manual"
+      placeholder="Ej. WhatsApp, Facebook, Referido, Sitio web"
+    />
+  </div>
 
-<div class="field">
-<label>Origen</label>
-<input name="source" value="${escapeHtml(lead?.source || "Manual")}">
-</div>
-
-<div class="field">
-<label>Estatus</label>
-<select name="status">
-
-<option value="Nuevo">Nuevo</option>
-<option value="Contactado">Contactado</option>
-<option value="Cotización enviada">Cotización enviada</option>
-<option value="Seguimiento">Seguimiento</option>
-
-</select>
-</div>
-
+  <div class="field">
+    <label>Estatus</label>
+    <select id="lead-status">
+      <option value="Nuevo">Nuevo</option>
+      <option value="Contactado">Contactado</option>
+      <option value="Cotización enviada">Cotización enviada</option>
+    </select>
+  </div>
 </div>
 </form>
 `,
