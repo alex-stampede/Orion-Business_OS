@@ -5,6 +5,7 @@ import {
   closeModal,
   bindModalFormSubmit
 } from "../ui.js";
+
 import {
   listBusinessCollection,
   createLead,
@@ -12,7 +13,8 @@ import {
   deleteLead,
   getCurrentBusinessPlan,
   canCreateEntity,
-  getPlanLimitMessage
+  getPlanLimitMessage,
+  canDeleteInCurrentPlan
 } from "../firestore-service.js";
 
 let leadsCache = [];
@@ -23,8 +25,10 @@ function buildUsageDots(current = 0, limit = 3) {
     <div class="plan-usage-dots">
       ${Array.from({ length: limit })
         .map(
-          (_, index) =>
-            `<span class="plan-usage-dot ${index < current ? "is-filled" : ""}"></span>`
+          (_, i) =>
+            `<span class="plan-usage-dot ${
+              i < current ? "is-filled" : ""
+            }"></span>`
         )
         .join("")}
     </div>
@@ -55,7 +59,7 @@ function renderLeadPlanAlert() {
       ${buildUsageDots(current, limit)}
 
       <p class="muted">
-        Actualiza a Plan Pro para tener leads ilimitados.
+        Tu plan actual incluye hasta 3 leads.
       </p>
 
       <div class="btn-row mt-4">
@@ -99,101 +103,70 @@ function openLeadModal(lead = null) {
 
   openModal({
     title: isEdit ? "Editar lead" : "Nuevo lead",
+
     content: `
-      <form id="lead-modal-form" style="display:grid; gap:16px;">
-        <p class="modal-note">
-          ${
-            isEdit
-              ? "Actualiza la información del prospecto."
-              : "Captura la información del lead para dar seguimiento comercial."
-          }
-        </p>
+<form id="lead-modal-form" style="display:grid;gap:16px">
 
-        <div class="modal-grid-2">
-          <div class="field">
-            <label for="lead-name">Nombre</label>
-            <input
-              id="lead-name"
-              name="name"
-              type="text"
-              value="${escapeHtml(lead?.name || "")}"
-              placeholder="Nombre del contacto"
-              required
-            />
-          </div>
+<p class="modal-note">
+${
+  isEdit
+    ? "Actualiza la información del prospecto."
+    : "Captura la información del lead para dar seguimiento comercial."
+}
+</p>
 
-          <div class="field">
-            <label for="lead-company">Empresa</label>
-            <input
-              id="lead-company"
-              name="company"
-              type="text"
-              value="${escapeHtml(lead?.company || "")}"
-              placeholder="Empresa o negocio"
-            />
-          </div>
+<div class="modal-grid-2">
 
-          <div class="field">
-            <label for="lead-email">Correo</label>
-            <input
-              id="lead-email"
-              name="email"
-              type="email"
-              value="${escapeHtml(lead?.email || "")}"
-              placeholder="correo@empresa.com"
-            />
-          </div>
+<div class="field">
+<label>Nombre</label>
+<input name="name" value="${escapeHtml(lead?.name || "")}" required>
+</div>
 
-          <div class="field">
-            <label for="lead-phone">Teléfono</label>
-            <input
-              id="lead-phone"
-              name="phone"
-              type="text"
-              value="${escapeHtml(lead?.phone || "")}"
-              placeholder="33 0000 0000"
-            />
-          </div>
+<div class="field">
+<label>Empresa</label>
+<input name="company" value="${escapeHtml(lead?.company || "")}">
+</div>
 
-          <div class="field">
-            <label for="lead-source">Origen</label>
-            <input
-              id="lead-source"
-              name="source"
-              type="text"
-              value="${escapeHtml(lead?.source || "Manual")}"
-              placeholder="Manual, referido, web..."
-            />
-          </div>
+<div class="field">
+<label>Email</label>
+<input name="email" value="${escapeHtml(lead?.email || "")}">
+</div>
 
-          <div class="field">
-            <label for="lead-status">Estatus</label>
-            <select id="lead-status" name="status">
-              <option value="Nuevo" ${
-                (lead?.status || "Nuevo") === "Nuevo" ? "selected" : ""
-              }>Nuevo</option>
-              <option value="Contactado" ${
-                lead?.status === "Contactado" ? "selected" : ""
-              }>Contactado</option>
-              <option value="Cotización enviada" ${
-                lead?.status === "Cotización enviada" ? "selected" : ""
-              }>Cotización enviada</option>
-              <option value="Seguimiento" ${
-                lead?.status === "Seguimiento" ? "selected" : ""
-              }>Seguimiento</option>
-            </select>
-          </div>
-        </div>
-      </form>
-    `,
+<div class="field">
+<label>Teléfono</label>
+<input name="phone" value="${escapeHtml(lead?.phone || "")}">
+</div>
+
+<div class="field">
+<label>Origen</label>
+<input name="source" value="${escapeHtml(lead?.source || "Manual")}">
+</div>
+
+<div class="field">
+<label>Estatus</label>
+<select name="status">
+
+<option value="Nuevo">Nuevo</option>
+<option value="Contactado">Contactado</option>
+<option value="Cotización enviada">Cotización enviada</option>
+<option value="Seguimiento">Seguimiento</option>
+
+</select>
+</div>
+
+</div>
+</form>
+`,
+
     actions: `
-      <button class="btn btn-secondary" type="button" id="cancel-lead-modal">
-        Cancelar
-      </button>
-      <button class="btn btn-primary" type="submit" form="lead-modal-form">
-        ${isEdit ? "Guardar cambios" : "Crear lead"}
-      </button>
-    `
+<button class="btn btn-secondary" id="cancel-lead-modal">
+Cancelar
+</button>
+
+<button class="btn btn-primary" type="submit" form="lead-modal-form">
+${isEdit ? "Guardar cambios" : "Crear lead"}
+</button>
+`
   });
 
   document
@@ -201,20 +174,11 @@ function openLeadModal(lead = null) {
     ?.addEventListener("click", closeModal);
 
   bindModalFormSubmit("lead-modal-form", async (form) => {
-    const formData = new FormData(form);
-
-    const payload = {
-      name: String(formData.get("name") || "").trim(),
-      company: String(formData.get("company") || "").trim(),
-      email: String(formData.get("email") || "").trim(),
-      phone: String(formData.get("phone") || "").trim(),
-      source: String(formData.get("source") || "").trim() || "Manual",
-      status: String(formData.get("status") || "").trim() || "Nuevo"
-    };
+    const data = Object.fromEntries(new FormData(form));
 
     try {
       if (isEdit) {
-        await updateLead(lead.id, payload);
+        await updateLead(lead.id, data);
         showToast("Lead actualizado");
       } else {
         const permission = await canCreateEntity("leads");
@@ -225,7 +189,7 @@ function openLeadModal(lead = null) {
           return;
         }
 
-        await createLead(payload);
+        await createLead(data);
         showToast("Lead creado");
       }
 
@@ -233,7 +197,7 @@ function openLeadModal(lead = null) {
       await loadLeads();
     } catch (error) {
       console.error(error);
-      showToast(isEdit ? "No se pudo actualizar el lead" : "No se pudo crear el lead");
+      showToast("Error guardando lead");
     }
   });
 }
@@ -242,26 +206,34 @@ function renderLeadRows() {
   const tbody = document.getElementById("leads-table-body");
   const count = document.getElementById("leads-count");
 
-  if (!tbody || !count) return;
+  const canDelete = canDeleteInCurrentPlan();
 
   count.textContent = `${filteredLeads.length} registros`;
 
   if (!filteredLeads.length) {
     tbody.innerHTML = `
-      <tr>
-        <td colspan="6">
-          <div style="padding:40px;text-align:center">
-            <h3>Aún no has creado leads</h3>
-            <p class="muted">
-              Empieza agregando tu primer lead.
-            </p>
-            <button class="btn btn-primary" id="create-first-lead-btn" type="button">
-              Crear lead
-            </button>
-          </div>
-        </td>
-      </tr>
-    `;
+<tr>
+
+<td colspan="6">
+
+<div style="padding:40px;text-align:center">
+
+<h3>Aún no has creado leads</h3>
+
+<p class="muted">
+Empieza agregando tu primer lead.
+</p>
+
+<button class="btn btn-primary" id="create-first-lead-btn">
+Crear lead
+</button>
+
+</div>
+
+</td>
+
+</tr>
+`;
 
     document
       .getElementById("create-first-lead-btn")
@@ -273,27 +245,56 @@ function renderLeadRows() {
   tbody.innerHTML = filteredLeads
     .map(
       (lead) => `
-      <tr>
-        <td>${escapeHtml(lead.name || "—")}</td>
-        <td>${escapeHtml(lead.company || "—")}</td>
-        <td>${escapeHtml(lead.source || "—")}</td>
-        <td>${escapeHtml(lead.status || "—")}</td>
-        <td>${lead.createdAt?.toDate ? formatDate(lead.createdAt.toDate()) : "—"}</td>
-        <td>
-          <div class="btn-row">
-            <button class="btn btn-secondary btn-sm js-edit-lead" data-id="${lead.id}" type="button">
-              Editar
-            </button>
-            <button class="btn btn-secondary btn-sm js-quote-lead" data-id="${lead.id}" type="button">
-              Cotizar
-            </button>
-            <button class="btn btn-secondary btn-sm js-delete-lead" data-id="${lead.id}" type="button">
-              Eliminar
-            </button>
-          </div>
-        </td>
-      </tr>
-    `
+<tr>
+
+<td>${escapeHtml(lead.name || "—")}</td>
+
+<td>${escapeHtml(lead.company || "—")}</td>
+
+<td>${escapeHtml(lead.source || "—")}</td>
+
+<td>${escapeHtml(lead.status || "—")}</td>
+
+<td>${
+        lead.createdAt?.toDate
+          ? formatDate(lead.createdAt.toDate())
+          : "—"
+      }</td>
+
+<td>
+
+<div class="btn-row">
+
+<button class="btn btn-secondary btn-sm js-edit-lead"
+data-id="${lead.id}">
+Editar
+</button>
+
+<button class="btn btn-secondary btn-sm js-quote-lead"
+data-id="${lead.id}">
+Cotizar
+</button>
+
+<button class="btn btn-secondary btn-sm js-delete-lead ${
+        canDelete ? "" : "btn-disabled"
+      }"
+data-id="${lead.id}"
+${canDelete ? "" : "disabled"}>
+
+Eliminar ${
+        canDelete
+          ? ""
+          : '<span class="badge-pro">PRO</span>'
+      }
+
+</button>
+
+</div>
+
+</td>
+
+</tr>
+`
     )
     .join("");
 
@@ -303,8 +304,8 @@ function renderLeadRows() {
 function bindLeadActions() {
   document.querySelectorAll(".js-edit-lead").forEach((btn) => {
     btn.onclick = () => {
-      const lead = leadsCache.find((item) => item.id === btn.dataset.id);
-      if (lead) openLeadModal(lead);
+      const lead = leadsCache.find((l) => l.id === btn.dataset.id);
+      openLeadModal(lead);
     };
   });
 
@@ -316,108 +317,138 @@ function bindLeadActions() {
 
   document.querySelectorAll(".js-delete-lead").forEach((btn) => {
     btn.onclick = async () => {
-      const lead = leadsCache.find((item) => item.id === btn.dataset.id);
-      if (!lead) return;
+      if (!canDeleteInCurrentPlan()) {
+        showToast("Eliminar leads está disponible en Plan Pro");
+        window.location.hash = "settings";
+        return;
+      }
+
+      const lead = leadsCache.find((l) => l.id === btn.dataset.id);
 
       if (!confirm(`Eliminar lead "${lead.name}"?`)) return;
 
-      try {
-        await deleteLead(lead.id);
-        showToast("Lead eliminado");
-        await loadLeads();
-      } catch (error) {
-        console.error(error);
-        showToast("No se pudo eliminar el lead");
-      }
+      await deleteLead(lead.id);
+
+      showToast("Lead eliminado");
+
+      loadLeads();
     };
   });
 }
 
 async function loadLeads() {
-  try {
-    leadsCache = await listBusinessCollection("leads");
-    filteredLeads = [...leadsCache];
+  leadsCache = await listBusinessCollection("leads");
+  filteredLeads = [...leadsCache];
 
-    renderLeadPlanAlert();
-    renderLeadRows();
-  } catch (error) {
-    console.error("ERROR AL CARGAR LEADS:", error);
-  }
+  renderLeadPlanAlert();
+  renderLeadRows();
 }
 
 export function renderLeads() {
   return `
-    <section class="app-view glass">
-      <div class="app-view-header">
-        <div class="app-view-title">
-          <p class="eyebrow-sm">Leads</p>
-          <h2>Prospectos y oportunidades iniciales</h2>
-          <p class="muted">
-            Captura, organiza, filtra y da seguimiento a los leads antes de convertirlos en clientes.
-          </p>
-        </div>
+<section class="app-view glass">
 
-        <div class="btn-row">
-          <button class="btn btn-primary" id="new-lead-btn" type="button">
-            Nuevo lead
-          </button>
-        </div>
-      </div>
+<div class="app-view-header">
 
-      <div class="app-view-grid">
-        <div id="leads-plan-alert"></div>
+<div class="app-view-title">
 
-        <article class="app-panel">
-          <div class="form-grid-2 mb-4">
-            <div class="field">
-              <label>Buscar</label>
-              <input
-                id="leads-search"
-                type="text"
-                placeholder="Nombre, empresa, email, teléfono..."
-              />
-            </div>
+<p class="eyebrow-sm">Leads</p>
 
-            <div class="field">
-              <label>Filtrar por estatus</label>
-              <select id="leads-filter-status">
-                <option value="">Todos</option>
-                <option value="Nuevo">Nuevo</option>
-                <option value="Contactado">Contactado</option>
-                <option value="Cotización enviada">Cotización enviada</option>
-                <option value="Seguimiento">Seguimiento</option>
-              </select>
-            </div>
-          </div>
+<h2>Prospectos y oportunidades iniciales</h2>
 
-          <div class="card-head">
-            <strong>Listado de leads</strong>
-            <span id="leads-count">Cargando...</span>
-          </div>
+<p class="muted">
+Captura y da seguimiento a oportunidades comerciales.
+</p>
 
-          <div class="table-shell">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>Nombre</th>
-                  <th>Empresa</th>
-                  <th>Origen</th>
-                  <th>Estatus</th>
-                  <th>Fecha</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody id="leads-table-body">
-                <tr>
-                  <td colspan="6">Cargando leads...</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </article>
-      </div>
-    </section>
-  `;
+</div>
+
+<div class="btn-row">
+
+<button class="btn btn-primary" id="new-lead-btn">
+Nuevo lead
+</button>
+
+</div>
+
+</div>
+
+<div class="app-view-grid">
+
+<div id="leads-plan-alert"></div>
+
+<article class="app-panel">
+
+<div class="form-grid-2 mb-4">
+
+<div class="field">
+
+<label>Buscar</label>
+
+<input id="leads-search">
+
+</div>
+
+<div class="field">
+
+<label>Estatus</label>
+
+<select id="leads-filter-status">
+
+<option value="">Todos</option>
+
+<option value="Nuevo">Nuevo</option>
+
+<option value="Contactado">Contactado</option>
+
+<option value="Cotización enviada">Cotización enviada</option>
+
+<option value="Seguimiento">Seguimiento</option>
+
+</select>
+
+</div>
+
+</div>
+
+<div class="card-head">
+
+<strong>Listado de leads</strong>
+
+<span id="leads-count"></span>
+
+</div>
+
+<div class="table-shell">
+
+<table class="data-table">
+
+<thead>
+
+<tr>
+
+<th>Nombre</th>
+<th>Empresa</th>
+<th>Origen</th>
+<th>Estatus</th>
+<th>Fecha</th>
+<th>Acciones</th>
+
+</tr>
+
+</thead>
+
+<tbody id="leads-table-body"></tbody>
+
+</table>
+
+</div>
+
+</article>
+
+</div>
+
+</section>
+`;
 }
 
 export function initLeads() {
