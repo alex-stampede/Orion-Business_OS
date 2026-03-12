@@ -130,7 +130,7 @@ function buildQuoteHTML(quote = {}) {
         <td>${formatMoney(item.unitPrice || 0, currency)}</td>
         <td>${formatMoney(item.subtotal || 0, currency)}</td>
       </tr>
-    `,
+    `
     )
     .join("");
 
@@ -181,140 +181,198 @@ function buildQuoteHTML(quote = {}) {
         <title>${folio}</title>
         <meta charset="utf-8" />
         <style>
-          body {
-            font-family: Inter, Arial, sans-serif;
-            padding: 38px 40px 70px;
-            color: ${palette.text};
-            position: relative;
+          @page {
+            size: auto;
+            margin: 10mm 10mm 12mm;
+          }
+
+          html, body {
+            margin: 0;
+            padding: 0;
             background: white;
           }
-          h1, h2, h3, p { margin: 0 0 12px; }
+
+          body {
+            font-family: Inter, Arial, sans-serif;
+            padding: 24px 26px 46px;
+            color: ${palette.text};
+            position: relative;
+            font-size: 12px;
+            line-height: 1.45;
+          }
+
+          h1, h2, h3, p {
+            margin: 0 0 8px;
+          }
+
           .head {
-            display:flex;
-            justify-content:space-between;
-            align-items:flex-start;
-            gap:24px;
-            margin-bottom:32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 18px;
+            margin-bottom: 18px;
           }
+
           .brand-wrap {
-            display:flex;
-            align-items:flex-start;
-            gap:16px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            min-width: 0;
           }
+
           .brand-logo {
-            max-width: 120px;
-            max-height: 70px;
+            max-width: 96px;
+            max-height: 56px;
             object-fit: contain;
           }
+
           .brand {
-            font-size: 24px;
+            font-size: 22px;
+            font-weight: 800;
+            color: ${palette.primary};
+            line-height: 1.05;
+            margin-bottom: 4px;
+          }
+
+          .sub {
+            font-size: 11px;
+            color: ${palette.muted};
+          }
+
+          .meta {
+            text-align: right;
+            font-size: 12px;
+            color: ${palette.muted};
+            min-width: 180px;
+          }
+
+          .meta p {
+            margin-bottom: 4px;
+          }
+
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 14px;
+          }
+
+          th, td {
+            border: 1px solid ${palette.border};
+            padding: 9px 10px;
+            font-size: 11px;
+            text-align: left;
+            vertical-align: top;
+          }
+
+          th {
+            background: ${palette.soft};
+            color: ${palette.text};
+            font-weight: 700;
+          }
+
+          .totals {
+            margin-top: 14px;
+            margin-left: auto;
+            width: min(320px, 100%);
+          }
+
+          .totals-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 7px 0;
+            border-bottom: 1px solid ${palette.border};
+            font-size: 11px;
+          }
+
+          .totals-row.total {
+            font-size: 13px;
             font-weight: 800;
             color: ${palette.primary};
           }
-          .sub {
-            font-size: 13px;
-            color: ${palette.muted};
-          }
-          .meta {
-            text-align:right;
-            font-size:14px;
-            color:${palette.muted};
-          }
-          .meta p {
-            margin-bottom: 6px;
-          }
-          table {
-            width:100%;
-            border-collapse:collapse;
-            margin-top:24px;
-          }
-          th, td {
-            border:1px solid ${palette.border};
-            padding:12px;
-            font-size:12px;
-            text-align:left;
-          }
-          th {
-            background:${palette.soft};
-            color:${palette.text};
-          }
-          .totals {
-            margin-top:24px;
-            margin-left:auto;
-            width: min(360px, 100%);
-          }
-          .totals-row {
-            display:flex;
-            justify-content:space-between;
-            gap:16px;
-            padding:10px 0;
-            border-bottom:1px solid ${palette.border};
-            font-size:12px;
-          }
-          .totals-row.total {
-            font-size:14px;
-            font-weight:800;
-            color:${palette.primary};
-          }
+
           .notes {
-            margin-top:32px;
-            font-size:11px;
-            color:${palette.muted};
-            line-height:1.7;
+            margin-top: 16px;
+            font-size: 10.5px;
+            color: ${palette.muted};
+            line-height: 1.55;
           }
+
           .extra-info {
-            margin-top: 32px;
+            margin-top: 16px;
             display: grid;
-            gap: 18px;
+            gap: 10px;
           }
+
           .info-block {
             border: 1px solid ${palette.border};
-            border-radius: 16px;
-            padding: 16px 18px;
+            border-radius: 12px;
+            padding: 11px 12px;
             background: #fafdfb;
+            break-inside: avoid;
+            page-break-inside: avoid;
           }
+
           .info-block h3 {
-            font-size: 12px;
-            color: ${palette.primary};
-            margin-bottom: 12px;
-          }
-          .info-block p {
             font-size: 11px;
-            color: ${palette.muted};
-            line-height: 1.7;
-            margin-bottom: 6px;
+            color: ${palette.primary};
+            margin-bottom: 7px;
           }
+
+          .info-block p {
+            font-size: 10.5px;
+            color: ${palette.muted};
+            line-height: 1.5;
+            margin-bottom: 3px;
+          }
+
           .footer {
             position: fixed;
-            left: 40px;
-            right: 40px;
-            bottom: 22px;
-            font-size: 11px;
+            left: 26px;
+            right: 26px;
+            bottom: 10px;
+            font-size: 10px;
             color: ${palette.footer};
             border-top: 1px solid ${palette.border};
-            padding-top: 10px;
+            padding-top: 7px;
             text-align: center;
           }
+
           .top-actions {
             position: fixed;
-            top: 16px;
-            right: 16px;
+            top: 12px;
+            right: 12px;
             display: flex;
-            gap: 10px;
+            gap: 8px;
             print-color-adjust: exact;
             -webkit-print-color-adjust: exact;
           }
+
           .top-actions button {
             border: 1px solid ${palette.border};
             background: white;
-            border-radius: 12px;
-            padding: 10px 14px;
+            border-radius: 10px;
+            padding: 8px 11px;
             cursor: pointer;
             font-weight: 600;
             color: ${palette.text};
+            font-size: 12px;
           }
+
           @media print {
-            .top-actions { display: none; }
+            .top-actions {
+              display: none;
+            }
+
+            body {
+              padding: 14px 16px 28px;
+            }
+
+            .footer {
+              left: 16px;
+              right: 16px;
+              bottom: 4px;
+            }
           }
         </style>
       </head>
@@ -408,7 +466,7 @@ export async function exportQuoteToPDF(quote = {}, existingWindow = null) {
   iframe.onload = () => {
     setTimeout(() => {
       iframe.contentWindow.print();
-    }, 400);
+    }, 350);
   };
 
   iframe.src = url;
