@@ -55,7 +55,7 @@ function renderLeadPlanAlert() {
       ${buildUsageDots(current, limit)}
 
       <p class="muted">
-        Tu plan actual incluye hasta 3 leads.
+        Actualiza a Plan Pro para tener leads ilimitados.
       </p>
 
       <div class="btn-row mt-4">
