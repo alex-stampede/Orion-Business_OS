@@ -42,6 +42,65 @@ export const PLAN_CONFIG = {
   }
 };
 
+export const QUOTE_THEME_CONFIG = {
+  green: {
+    key: "green",
+    label: "Verde Orion",
+    primary: "#00382E",
+    accent: "#0b8c67",
+    soft: "#E8F5EF"
+  },
+  black: {
+    key: "black",
+    label: "Negro",
+    primary: "#111111",
+    accent: "#2B2B2B",
+    soft: "#F3F4F6"
+  },
+  blue: {
+    key: "blue",
+    label: "Azul",
+    primary: "#0A84FF",
+    accent: "#3B82F6",
+    soft: "#EAF3FF"
+  },
+  red: {
+    key: "red",
+    label: "Rojo",
+    primary: "#B42318",
+    accent: "#EF4444",
+    soft: "#FEECEC"
+  },
+  yellow: {
+    key: "yellow",
+    label: "Amarillo",
+    primary: "#B54708",
+    accent: "#F59E0B",
+    soft: "#FFF7E8"
+  },
+  orange: {
+    key: "orange",
+    label: "Naranja",
+    primary: "#C2410C",
+    accent: "#F97316",
+    soft: "#FFF1E8"
+  },
+  purple: {
+    key: "purple",
+    label: "Morado",
+    primary: "#6D28D9",
+    accent: "#8B5CF6",
+    soft: "#F3EEFF"
+  },
+  pink: {
+    key: "pink",
+    label: "Rosa",
+    primary: "#BE185D",
+    accent: "#EC4899",
+    soft: "#FDECF5"
+  }
+};
+
 function getBusinessId() {
   const state = getState();
   const businessId = state.user?.businessId;
@@ -68,7 +127,15 @@ export function getQuoteItemsCollection(quoteId) {
   return collection(db, "businesses", businessId, "quotes", quoteId, "items");
 }
 
-export async function listBusinessCollection(collectionName, orderField = "createdAt", direction = "desc") {
+export function getQuoteThemeConfig(themeKey = "green") {
+  return QUOTE_THEME_CONFIG[themeKey] || QUOTE_THEME_CONFIG.green;
+}
+
+export async function listBusinessCollection(
+  collectionName,
+  orderField = "createdAt",
+  direction = "desc"
+) {
   const ref = getBusinessCollection(collectionName);
   const q = query(ref, orderBy(orderField, direction));
   const snapshot = await getDocs(q);
@@ -161,10 +228,13 @@ export async function uploadBusinessLogo(file) {
   formData.append("logo", file);
   formData.append("businessId", businessId);
 
-  const response = await fetch("https://marketingorion.com/orion_flow_database/upload-logo.php", {
-    method: "POST",
-    body: formData
-  });
+  const response = await fetch(
+    "https://marketingorion.com/orion_flow_database/upload-logo.php",
+    {
+      method: "POST",
+      body: formData
+    }
+  );
 
   let data = null;
 
@@ -194,10 +264,14 @@ export async function addActivity(type, message, meta = {}) {
 
 export async function createLead(data) {
   const id = await createBusinessDoc("leads", data);
-  await addActivity("lead_created", `Se creó el lead "${data.name || "Sin nombre"}".`, {
-    leadId: id,
-    name: data.name || ""
-  });
+  await addActivity(
+    "lead_created",
+    `Se creó el lead "${data.name || "Sin nombre"}".`,
+    {
+      leadId: id,
+      name: data.name || ""
+    }
+  );
   return id;
 }
 
@@ -208,15 +282,23 @@ export async function updateLead(leadId, data) {
 
 export async function deleteLead(leadId, leadName = "") {
   await removeBusinessDoc("leads", leadId);
-  await addActivity("lead_deleted", `Se eliminó el lead "${leadName || "Sin nombre"}".`, { leadId });
+  await addActivity(
+    "lead_deleted",
+    `Se eliminó el lead "${leadName || "Sin nombre"}".`,
+    { leadId }
+  );
 }
 
 export async function createClient(data) {
   const id = await createBusinessDoc("clients", data);
-  await addActivity("client_created", `Se creó el cliente "${data.name || "Sin nombre"}".`, {
-    clientId: id,
-    name: data.name || ""
-  });
+  await addActivity(
+    "client_created",
+    `Se creó el cliente "${data.name || "Sin nombre"}".`,
+    {
+      clientId: id,
+      name: data.name || ""
+    }
+  );
   return id;
 }
 
@@ -227,7 +309,11 @@ export async function updateClient(clientId, data) {
 
 export async function deleteClient(clientId, clientName = "") {
   await removeBusinessDoc("clients", clientId);
-  await addActivity("client_deleted", `Se eliminó el cliente "${clientName || "Sin nombre"}".`, { clientId });
+  await addActivity(
+    "client_deleted",
+    `Se eliminó el cliente "${clientName || "Sin nombre"}".`,
+    { clientId }
+  );
 }
 
 export async function getDashboardMetrics() {
@@ -243,7 +329,11 @@ export async function getDashboardMetrics() {
   const lostQuotes = quotes.filter(q => q.status === "lost").length;
   const pendingQuotes = quotes.filter(q => !["won", "lost"].includes(q.status)).length;
 
-  const totalQuotedAmount = quotes.reduce((acc, q) => acc + Number(q.total || 0), 0);
+  const totalQuotedAmount = quotes.reduce(
+    (acc, q) => acc + Number(q.total || 0),
+    0
+  );
+
   const totalWonAmount = quotes
     .filter(q => q.status === "won")
     .reduce((acc, q) => acc + Number(q.total || 0), 0);
@@ -330,6 +420,7 @@ export async function getNextQuoteFolio() {
     folio: `${prefix}-${padded}`,
     taxRate: Number(settings.taxRate || 16),
     currency: settings.currency || "MXN",
+    quoteTheme: settings.quoteTheme || "green",
     settings
   };
 }
@@ -394,12 +485,23 @@ export async function updateQuote(quoteId, quoteData, items = null) {
     const batch = writeBatch(db);
 
     existingItems.forEach(item => {
-      const itemRef = doc(db, "businesses", businessId, "quotes", quoteId, "items", item.id);
+      const itemRef = doc(
+        db,
+        "businesses",
+        businessId,
+        "quotes",
+        quoteId,
+        "items",
+        item.id
+      );
       batch.delete(itemRef);
     });
 
     items.forEach(item => {
-      const itemRef = doc(collection(db, "businesses", businessId, "quotes", quoteId, "items"));
+      const itemRef = doc(
+        collection(db, "businesses", businessId, "quotes", quoteId, "items")
+      );
+
       batch.set(itemRef, {
         ...item,
         createdAt: serverTimestamp(),
@@ -419,7 +521,15 @@ export async function deleteQuote(quoteId, folio = "") {
   const batch = writeBatch(db);
 
   existingItems.forEach(item => {
-    const itemRef = doc(db, "businesses", businessId, "quotes", quoteId, "items", item.id);
+    const itemRef = doc(
+      db,
+      "businesses",
+      businessId,
+      "quotes",
+      quoteId,
+      "items",
+      item.id
+    );
     batch.delete(itemRef);
   });
 
