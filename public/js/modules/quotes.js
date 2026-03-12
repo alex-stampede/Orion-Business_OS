@@ -233,6 +233,8 @@ function bindActions() {
 
 document.querySelectorAll(".js-download-quote").forEach(btn => {
   btn.onclick = async () => {
+    showToast("Para conservar los colores del PDF en Chrome o Safari, activa “Gráficos en segundo plano” al imprimir.");
+    
     const quoteId = btn.dataset.id;
 
     const [quote, items, settings] = await Promise.all([
