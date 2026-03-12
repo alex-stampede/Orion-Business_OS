@@ -55,7 +55,7 @@ function renderClientPlanAlert() {
       ${buildUsageDots(current, limit)}
 
       <p class="muted">
-        Tu plan actual incluye hasta 3 clientes.
+        Actualiza a Plan Pro para tener clientes ilimitados.
       </p>
 
       <div class="btn-row mt-4">
