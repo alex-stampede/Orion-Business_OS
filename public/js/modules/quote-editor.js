@@ -642,13 +642,13 @@ previewPdfBtn?.addEventListener("click", async () => {
 
       if (linkType === "new-lead") {
         const newLeadPayload = {
-          name: $("#new-lead-name")?.value.trim() || clientNameSnapshot,
-          company: $("#new-lead-company")?.value.trim() || "",
-          email: $("#new-lead-email")?.value.trim() || "",
-          phone: $("#new-lead-phone")?.value.trim() || "",
-          source: $("#new-lead-source")?.value.trim() || "Manual",
-          status: $("#new-lead-status")?.value || "Nuevo",
-        };
+  company: $("#new-lead-company")?.value.trim() || "",
+  name: $("#new-lead-name")?.value.trim() || clientNameSnapshot,
+  email: $("#new-lead-email")?.value.trim() || "",
+  phone: $("#new-lead-phone")?.value.trim() || "",
+  source: $("#new-lead-source")?.value.trim() || "Manual",
+  status: $("#new-lead-status")?.value || "Nuevo",
+};
 
         const newLeadId = await createLead(newLeadPayload);
         linkedType = "lead";
