@@ -45,7 +45,7 @@ function getPlanUI(state = {}) {
     planName: isPro ? "Plan Pro" : "Plan Inicio",
     subscriptionStatus,
     cancelAtPeriodEnd,
-    priceText: isPro ? "$149 MXN / mes" : "Gratis"
+    priceText: isPro ? "$179 MXN / mes" : "Gratis"
   };
 }
 
