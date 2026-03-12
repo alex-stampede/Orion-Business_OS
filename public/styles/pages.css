@@ -6,30 +6,81 @@
 
 .hero-copy {
   position: relative;
-  isolation: isolate;
+  isolation: auto;
 }
 
 .hero-copy::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background:
-    radial-gradient(
-      circle at 18% 16%,
-      rgba(126, 226, 184, 0.12),
-      transparent 24%
-    ),
-    radial-gradient(circle at 84% 20%, rgba(13, 91, 74, 0.18), transparent 20%),
-    linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.06),
-      rgba(255, 255, 255, 0.035)
-    );
+  display: none;
+  content: none;
 }
 
 .hero-copy h1 {
   max-width: 760px;
+}
+
+/* =========================
+   HERO LANDING — SINGLE CARD
+========================= */
+
+.hero-landing .container {
+  display: block;
+}
+
+.hero-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 34px;
+  padding: 56px;
+  border: 1px solid var(--line);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.07),
+    rgba(255, 255, 255, 0.04)
+  );
+  box-shadow: var(--shadow-md);
+}
+
+.hero-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 18% 16%, rgba(126, 226, 184, 0.12), transparent 24%),
+    radial-gradient(circle at 84% 20%, rgba(13, 91, 74, 0.18), transparent 20%);
+}
+
+.hero-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.hero-image-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 34px;
+}
+
+.hero-system-image {
+  display: block;
+  width: 100%;
+  max-width: 920px;
+  height: auto;
+
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* si todavía existe la clase hero-ui en el html, la neutralizamos */
+.hero-ui.hero-preview,
+.hero-preview {
+  display: block;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  border-radius: 0;
 }
 
 .trust-row {
@@ -500,6 +551,20 @@
   .app-view-header {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .hero-card {
+    padding: 26px 20px;
+    border-radius: 26px;
+  }
+
+  .hero-image-wrapper {
+    margin-top: 24px;
+  }
+
+  .hero-system-image {
+    max-width: 100%;
+    border-radius: 16px;
   }
 }
 /* =========================
