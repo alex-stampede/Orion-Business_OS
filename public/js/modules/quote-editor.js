@@ -521,12 +521,14 @@ export async function initQuoteEditor() {
   linkTypeSelect?.addEventListener("change", updateLinkPanels);
   addItemBtn?.addEventListener("click", () => addItemRow());
 
-  previewPdfBtn?.addEventListener("click", async () => {
-    const popup = window.open("", "_blank", "width=980,height=760");
-    if (!popup) {
-      showToast("El navegador bloqueó la ventana del PDF");
-      return;
-    }
+previewPdfBtn?.addEventListener("click", async () => {
+  showToast("Para conservar los colores del PDF en Chrome o Safari, activa “Gráficos en segundo plano” al imprimir.");
+
+  const popup = window.open("", "_blank", "width=980,height=760");
+  if (!popup) {
+    showToast("El navegador bloqueó la ventana del PDF");
+    return;
+  }
 
     const currency = $("#quote-currency")?.value || "MXN";
     const taxRate = Number($("#quote-tax")?.value || 0);
