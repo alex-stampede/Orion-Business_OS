@@ -1,4 +1,4 @@
-import { $, formatDate, escapeHtml } from "../helpers.js";
+import { escapeHtml, formatDate } from "../helpers.js";
 import { showToast } from "../ui.js";
 import {
   listBusinessCollection,
@@ -7,26 +7,24 @@ import {
   deleteLead,
   getCurrentBusinessPlan,
   canCreateEntity,
-  getPlanLimitMessage,
-  canDeleteInCurrentPlan
+  getPlanLimitMessage
 } from "../firestore-service.js";
 
 let leadsCache = [];
 let filteredLeads = [];
-let editingLeadId = null;
 
-function normalizeDate(value) {
-  if (!value) return "—";
-  if (value?.toDate) return formatDate(value.toDate());
-  return formatDate(value);
-}
-
-function getLeadById(id) {
-  return leadsCache.find(item => item.id === id) || null;
+function buildUsageDots(current = 0, limit = 3) {
+  return `
+    <div class="plan-usage-dots">
+      ${Array.from({ length: limit })
+        .map((_, index) => `<span class="plan-usage-dot ${index < current ? "is-filled" : ""}"></span>`)
+        .join("")}
+    </div>
+  `;
 }
 
 function renderLeadPlanAlert() {
-  const box = $("#leads-plan-alert");
+  const box = document.getElementById("leads-plan-alert");
   if (!box) return;
 
   const plan = getCurrentBusinessPlan();
@@ -38,40 +36,42 @@ function renderLeadPlanAlert() {
 
   const current = leadsCache.length;
   const limit = plan.limits.leads;
-  const reached = current >= limit;
 
   box.innerHTML = `
-    <article class="app-panel">
+    <article class="app-panel plan-usage-card">
       <div class="card-head">
-        <strong>${plan.name}</strong>
+        <strong>Plan Inicio</strong>
         <span>${current}/${limit} leads usados</span>
       </div>
+
+      ${buildUsageDots(current, limit)}
+
       <p class="muted">
-        ${
-          reached
-            ? "¿Necesitas agregar más leads? Mejora tu plan para seguir captando oportunidades."
-            : "Tu plan actual incluye hasta 3 leads."
-        }
+        Tu plan actual incluye hasta 3 leads.
       </p>
+
       <div class="btn-row mt-4">
-        <a href="#settings" class="btn btn-secondary btn-sm">Mejorar plan</a>
+        <a href="#settings" class="btn btn-secondary btn-sm">
+          Actualizar a Plan Pro · $179 MXN / mes
+        </a>
       </div>
     </article>
   `;
 }
 
-function applyFilters() {
-  const search = ($("#leads-search")?.value || "").toLowerCase().trim();
-  const status = $("#leads-filter-status")?.value || "";
+function applyLeadFilters() {
+  const search = (document.getElementById("leads-search")?.value || "").toLowerCase().trim();
+  const status = document.getElementById("leads-filter-status")?.value || "";
 
   filteredLeads = leadsCache.filter(lead => {
     const haystack = [
       lead.name || "",
       lead.company || "",
-      lead.source || "",
       lead.email || "",
       lead.phone || ""
-    ].join(" ").toLowerCase();
+    ]
+      .join(" ")
+      .toLowerCase();
 
     const matchesSearch = !search || haystack.includes(search);
     const matchesStatus = !status || lead.status === status;
@@ -82,104 +82,142 @@ function applyFilters() {
   renderLeadRows();
 }
 
-function renderLeadRows() {
-  const tbody = $("#leads-table-body");
-  const count = $("#leads-count");
-  const canDelete = canDeleteInCurrentPlan();
+function openLeadModal(lead = null) {
+  const isEdit = Boolean(lead);
 
-  if (!tbody || !count) return;
+  const name = prompt("Nombre del lead", lead?.name || "");
+  if (name === null) return;
+
+  const company = prompt("Empresa", lead?.company || "");
+  if (company === null) return;
+
+  const email = prompt("Correo", lead?.email || "");
+  if (email === null) return;
+
+  const phone = prompt("Teléfono", lead?.phone || "");
+  if (phone === null) return;
+
+  const source = prompt("Origen", lead?.source || "Manual");
+  if (source === null) return;
+
+  const status = prompt("Estatus", lead?.status || "Nuevo");
+  if (status === null) return;
+
+  const payload = {
+    name: name.trim(),
+    company: company.trim(),
+    email: email.trim(),
+    phone: phone.trim(),
+    source: source.trim(),
+    status: status.trim() || "Nuevo"
+  };
+
+  if (isEdit) {
+    updateLead(lead.id, payload)
+      .then(() => {
+        showToast("Lead actualizado");
+        return loadLeads();
+      })
+      .catch(error => {
+        console.error(error);
+        showToast("No se pudo actualizar el lead");
+      });
+  } else {
+    canCreateEntity("leads")
+      .then(permission => {
+        if (!permission.allowed) {
+          showToast(getPlanLimitMessage("leads"));
+          window.location.hash = "settings";
+          return;
+        }
+
+        return createLead(payload).then(() => {
+          showToast("Lead creado");
+          return loadLeads();
+        });
+      })
+      .catch(error => {
+        console.error(error);
+        showToast("No se pudo crear el lead");
+      });
+  }
+}
+
+function renderLeadRows() {
+  const tbody = document.getElementById("leads-table-body");
+  const count = document.getElementById("leads-count");
 
   count.textContent = `${filteredLeads.length} registros`;
 
   if (!filteredLeads.length) {
-    tbody.innerHTML = `<tr><td colspan="6">No se encontraron leads.</td></tr>`;
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="6">
+          <div style="padding:40px;text-align:center">
+            <h3>Aún no has creado leads</h3>
+            <p class="muted">
+              Empieza agregando tu primer lead.
+            </p>
+            <button class="btn btn-primary" id="create-first-lead-btn" type="button">
+              Crear lead
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+
+    document.getElementById("create-first-lead-btn")?.addEventListener("click", () => openLeadModal());
     return;
   }
 
   tbody.innerHTML = filteredLeads
     .map(
       lead => `
-        <tr>
-          <td>${escapeHtml(lead.name || "—")}</td>
-          <td>${escapeHtml(lead.company || "—")}</td>
-          <td>${escapeHtml(lead.source || "—")}</td>
-          <td>${escapeHtml(lead.status || "Nuevo")}</td>
-          <td>${normalizeDate(lead.createdAt)}</td>
-          <td>
-            <div class="btn-row" style="gap:8px;">
-              <button class="btn btn-secondary btn-sm js-edit-lead" data-id="${lead.id}">Editar</button>
-              ${canDelete ? `<button class="btn btn-secondary btn-sm js-delete-lead" data-id="${lead.id}">Eliminar</button>` : ``}
-              <a class="btn btn-secondary btn-sm" href="#quote-editor?type=lead&id=${lead.id}">Cotizar</a>
-            </div>
-          </td>
-        </tr>
-      `
+      <tr>
+        <td>${escapeHtml(lead.name || "—")}</td>
+        <td>${escapeHtml(lead.company || "—")}</td>
+        <td>${escapeHtml(lead.source || "—")}</td>
+        <td>${escapeHtml(lead.status || "—")}</td>
+        <td>${lead.createdAt?.toDate ? formatDate(lead.createdAt.toDate()) : "—"}</td>
+        <td>
+          <div class="btn-row">
+            <button class="btn btn-secondary btn-sm js-edit-lead" data-id="${lead.id}" type="button">Editar</button>
+            <button class="btn btn-secondary btn-sm js-quote-lead" data-id="${lead.id}" type="button">Cotizar</button>
+            <button class="btn btn-secondary btn-sm js-delete-lead" data-id="${lead.id}" type="button">Eliminar</button>
+          </div>
+        </td>
+      </tr>
+    `
     )
     .join("");
 
-  bindLeadRowActions();
+  bindLeadActions();
 }
 
-async function loadLeads() {
-  try {
-    leadsCache = await listBusinessCollection("leads");
-    filteredLeads = [...leadsCache];
-    renderLeadPlanAlert();
-    renderLeadRows();
-  } catch (error) {
-    console.error(error);
-    const tbody = $("#leads-table-body");
-    const count = $("#leads-count");
-    if (count) count.textContent = "Error";
-    if (tbody) tbody.innerHTML = `<tr><td colspan="6">No se pudieron cargar los leads.</td></tr>`;
-  }
-}
-
-function fillLeadForm(lead = null) {
-  $("#lead-name").value = lead?.name || "";
-  $("#lead-company").value = lead?.company || "";
-  $("#lead-source").value = lead?.source || "";
-  $("#lead-status").value = lead?.status || "Nuevo";
-  $("#lead-email").value = lead?.email || "";
-  $("#lead-phone").value = lead?.phone || "";
-}
-
-function resetLeadForm() {
-  editingLeadId = null;
-  fillLeadForm(null);
-  const submitText = $("#lead-submit-text");
-  if (submitText) submitText.textContent = "Guardar lead";
-}
-
-function bindLeadRowActions() {
-  document.querySelectorAll(".js-edit-lead").forEach(button => {
-    button.onclick = () => {
-      const id = button.dataset.id;
-      const lead = getLeadById(id);
-      const panel = $("#lead-form-panel");
-      const submitText = $("#lead-submit-text");
-
-      if (!lead) return;
-
-      editingLeadId = id;
-      fillLeadForm(lead);
-      if (panel) panel.style.display = "block";
-      if (submitText) submitText.textContent = "Actualizar lead";
+function bindLeadActions() {
+  document.querySelectorAll(".js-edit-lead").forEach(btn => {
+    btn.onclick = () => {
+      const lead = leadsCache.find(item => item.id === btn.dataset.id);
+      if (lead) openLeadModal(lead);
     };
   });
 
-  document.querySelectorAll(".js-delete-lead").forEach(button => {
-    button.onclick = async () => {
-      const id = button.dataset.id;
-      const lead = getLeadById(id);
+  document.querySelectorAll(".js-quote-lead").forEach(btn => {
+    btn.onclick = () => {
+      window.location.hash = `quote-editor?type=lead&id=${btn.dataset.id}`;
+    };
+  });
+
+  document.querySelectorAll(".js-delete-lead").forEach(btn => {
+    btn.onclick = async () => {
+      const lead = leadsCache.find(item => item.id === btn.dataset.id);
       if (!lead) return;
 
-      const ok = window.confirm(`¿Eliminar el lead "${lead.name || "Sin nombre"}"?`);
-      if (!ok) return;
+      if (!confirm(`Eliminar lead "${lead.name}"?`)) return;
 
       try {
-        await deleteLead(id, lead.name || "");
-        showToast("Lead eliminado correctamente");
+        await deleteLead(lead.id);
+        showToast("Lead eliminado");
         await loadLeads();
       } catch (error) {
         console.error(error);
@@ -187,6 +225,18 @@ function bindLeadRowActions() {
       }
     };
   });
+}
+
+async function loadLeads() {
+  try {
+    leadsCache = await listBusinessCollection("leads");
+    filteredLeads = [...leadsCache];
+
+    renderLeadPlanAlert();
+    renderLeadRows();
+  } catch (error) {
+    console.error("ERROR AL CARGAR LEADS:", error);
+  }
 }
 
 export function renderLeads() {
@@ -202,7 +252,7 @@ export function renderLeads() {
         </div>
 
         <div class="btn-row">
-          <button class="btn btn-primary" type="button" id="new-lead-btn">Nuevo lead</button>
+          <button class="btn btn-primary" id="new-lead-btn" type="button">Nuevo lead</button>
         </div>
       </div>
 
@@ -210,19 +260,20 @@ export function renderLeads() {
         <div id="leads-plan-alert"></div>
 
         <article class="app-panel">
-          <div class="form-grid-2" style="margin-bottom:16px;">
+          <div class="form-grid-2 mb-4">
             <div class="field">
-              <label for="leads-search">Buscar</label>
+              <label>Buscar</label>
               <input id="leads-search" type="text" placeholder="Nombre, empresa, email, teléfono..." />
             </div>
+
             <div class="field">
-              <label for="leads-filter-status">Filtrar por estatus</label>
+              <label>Filtrar por estatus</label>
               <select id="leads-filter-status">
                 <option value="">Todos</option>
                 <option value="Nuevo">Nuevo</option>
                 <option value="Contactado">Contactado</option>
                 <option value="Cotización enviada">Cotización enviada</option>
-                <option value="Negociación">Negociación</option>
+                <option value="Seguimiento">Seguimiento</option>
               </select>
             </div>
           </div>
@@ -245,56 +296,12 @@ export function renderLeads() {
                 </tr>
               </thead>
               <tbody id="leads-table-body">
-                <tr><td colspan="6">Cargando leads...</td></tr>
+                <tr>
+                  <td colspan="6">Cargando leads...</td>
+                </tr>
               </tbody>
             </table>
           </div>
-        </article>
-
-        <article class="app-panel" id="lead-form-panel" style="display:none;">
-          <div class="card-head">
-            <strong>Lead</strong>
-            <span>Captura rápida</span>
-          </div>
-
-          <form id="lead-form">
-            <div class="form-grid-2">
-              <div class="field">
-                <label for="lead-name">Nombre</label>
-                <input id="lead-name" type="text" required />
-              </div>
-              <div class="field">
-                <label for="lead-company">Empresa</label>
-                <input id="lead-company" type="text" />
-              </div>
-              <div class="field">
-                <label for="lead-source">Origen</label>
-                <input id="lead-source" type="text" placeholder="WhatsApp, Web, Instagram..." />
-              </div>
-              <div class="field">
-                <label for="lead-status">Estatus</label>
-                <select id="lead-status">
-                  <option>Nuevo</option>
-                  <option>Contactado</option>
-                  <option>Cotización enviada</option>
-                  <option>Negociación</option>
-                </select>
-              </div>
-              <div class="field">
-                <label for="lead-email">Email</label>
-                <input id="lead-email" type="email" />
-              </div>
-              <div class="field">
-                <label for="lead-phone">Teléfono</label>
-                <input id="lead-phone" type="text" />
-              </div>
-            </div>
-
-            <div class="btn-row mt-5">
-              <button class="btn btn-primary" type="submit"><span id="lead-submit-text">Guardar lead</span></button>
-              <button class="btn btn-secondary" type="button" id="cancel-lead-edit-btn">Cancelar</button>
-            </div>
-          </form>
         </article>
       </div>
     </section>
@@ -302,69 +309,9 @@ export function renderLeads() {
 }
 
 export function initLeads() {
-  const newBtn = $("#new-lead-btn");
-  const panel = $("#lead-form-panel");
-  const form = $("#lead-form");
-  const cancelBtn = $("#cancel-lead-edit-btn");
-
   loadLeads();
 
-  $("#leads-search")?.addEventListener("input", applyFilters);
-  $("#leads-filter-status")?.addEventListener("change", applyFilters);
-
-  newBtn?.addEventListener("click", async () => {
-    const permission = await canCreateEntity("leads");
-
-    if (!permission.allowed) {
-      showToast(getPlanLimitMessage("leads"));
-      renderLeadPlanAlert();
-      return;
-    }
-
-    resetLeadForm();
-    if (panel) panel.style.display = "block";
-  });
-
-  cancelBtn?.addEventListener("click", () => {
-    resetLeadForm();
-    if (panel) panel.style.display = "none";
-  });
-
-  form?.addEventListener("submit", async event => {
-    event.preventDefault();
-
-    const payload = {
-      name: $("#lead-name")?.value.trim() || "",
-      company: $("#lead-company")?.value.trim() || "",
-      source: $("#lead-source")?.value.trim() || "Manual",
-      status: $("#lead-status")?.value || "Nuevo",
-      email: $("#lead-email")?.value.trim() || "",
-      phone: $("#lead-phone")?.value.trim() || ""
-    };
-
-    try {
-      if (editingLeadId) {
-        await updateLead(editingLeadId, payload);
-        showToast("Lead actualizado correctamente");
-      } else {
-        const permission = await canCreateEntity("leads");
-
-        if (!permission.allowed) {
-          showToast(getPlanLimitMessage("leads"));
-          renderLeadPlanAlert();
-          return;
-        }
-
-        await createLead(payload);
-        showToast("Lead guardado correctamente");
-      }
-
-      resetLeadForm();
-      if (panel) panel.style.display = "none";
-      await loadLeads();
-    } catch (error) {
-      console.error(error);
-      showToast("No se pudo guardar el lead");
-    }
-  });
+  document.getElementById("new-lead-btn")?.addEventListener("click", () => openLeadModal());
+  document.getElementById("leads-search")?.addEventListener("input", applyLeadFilters);
+  document.getElementById("leads-filter-status")?.addEventListener("change", applyLeadFilters);
 }
