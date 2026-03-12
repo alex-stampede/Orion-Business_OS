@@ -473,9 +473,16 @@ export function renderQuoteEditor() {
                 </div>
 
                 <div class="btn-row mt-5">
-                  <button class="btn btn-primary" type="submit"><span id="quote-submit-text">Guardar cotización</span></button>
-                  <button class="btn btn-secondary" id="preview-pdf-btn" type="button">Exportar PDF</button>
-                </div>
+  <button class="btn btn-primary" type="submit">
+    <span id="quote-submit-text">Guardar cotización</span>
+  </button>
+  <button class="btn btn-secondary" id="preview-pdf-btn" type="button">
+    Exportar PDF
+  </button>
+  <button class="btn btn-secondary" id="cancel-quote-btn" type="button">
+    Cancelar
+  </button>
+</div>
               </article>
             </div>
           </form>
@@ -489,6 +496,7 @@ export async function initQuoteEditor() {
   const form = $("#quote-form");
   const addItemBtn = $("#add-item-btn");
   const previewPdfBtn = $("#preview-pdf-btn");
+  const cancelQuoteBtn = $("#cancel-quote-btn");
   const linkTypeSelect = $("#quote-link-type");
 
   if (!form) return;
@@ -520,6 +528,9 @@ export async function initQuoteEditor() {
 
   linkTypeSelect?.addEventListener("change", updateLinkPanels);
   addItemBtn?.addEventListener("click", () => addItemRow());
+  cancelQuoteBtn?.addEventListener("click", () => {
+  window.location.hash = "quotes";
+    });
 
 previewPdfBtn?.addEventListener("click", async () => {
   showToast("Preparando PDF... Recuerda activar “Gráficos en segundo plano” en Chrome o Safari.");
