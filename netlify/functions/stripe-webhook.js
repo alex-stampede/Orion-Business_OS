@@ -76,7 +76,10 @@ exports.handler = async (event) => {
     switch (stripeEvent.type) {
       case "checkout.session.completed": {
         const session = stripeEvent.data.object;
-        const businessId = session.metadata?.businessId || session.subscription_data?.metadata?.businessId || null;
+        const businessId =
+          session.metadata?.businessId ||
+          session.subscription_data?.metadata?.businessId ||
+          null;
 
         if (businessId) {
           await updateBusinessById(db, businessId, {
@@ -105,17 +108,20 @@ exports.handler = async (event) => {
         const stripeCustomerId = invoice.customer;
 
         const business = await findBusinessByCustomerId(db, stripeCustomerId);
+
         if (business) {
           await business.ref.set(
             {
               plan: "pro",
               planName: "Plan Pro",
-              planPrice: 149,
+              planPrice: 179,
               billingCycle: "monthly",
               subscriptionStatus: "active",
               stripeCustomerId: stripeCustomerId || "",
-              stripeSubscriptionId: invoice.subscription || business.data.stripeSubscriptionId || "",
+              stripeSubscriptionId:
+                invoice.subscription || business.data.stripeSubscriptionId || "",
               cancelAtPeriodEnd: false,
+              paymentIssue: false,
               lastInvoicePaidAt: admin.firestore.FieldValue.serverTimestamp()
             },
             { merge: true }
@@ -136,21 +142,67 @@ exports.handler = async (event) => {
         break;
       }
 
+      case "invoice.payment_failed": {
+        const invoice = stripeEvent.data.object;
+        const stripeCustomerId = invoice.customer;
+
+        const business = await findBusinessByCustomerId(db, stripeCustomerId);
+
+        if (business) {
+          await business.ref.set(
+            {
+              paymentIssue: true,
+              lastPaymentFailedAt: admin.firestore.FieldValue.serverTimestamp(),
+              subscriptionStatus: invoice.subscription ? (business.data.subscriptionStatus || "past_due") : (business.data.subscriptionStatus || "past_due")
+            },
+            { merge: true }
+          );
+
+          await logBusinessActivity(
+            db,
+            business.id,
+            "stripe_invoice_payment_failed",
+            "Falló el cobro de la suscripción. El cliente debe revisar su método de pago.",
+            {
+              stripeCustomerId,
+              stripeSubscriptionId: invoice.subscription || "",
+              invoiceId: invoice.id || ""
+            }
+          );
+        }
+
+        break;
+      }
+
       case "customer.subscription.updated": {
         const subscription = stripeEvent.data.object;
         const stripeCustomerId = subscription.customer;
 
         const business = await findBusinessByCustomerId(db, stripeCustomerId);
+
         if (business) {
+          const subscriptionStatus = subscription.status || "inactive";
+          const cancelAtPeriodEnd = Boolean(subscription.cancel_at_period_end);
+          const currentPeriodEnd = subscription.current_period_end || null;
+
           await business.ref.set(
             {
               stripeSubscriptionId: subscription.id,
-              subscriptionStatus: subscription.status || "inactive",
-              currentPeriodEnd: subscription.current_period_end || null,
-              cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end),
-              plan: subscription.status === "active" ? "pro" : business.data.plan || "free",
-              planName: subscription.status === "active" ? "Plan Pro" : business.data.planName || "Plan Inicio",
-              planPrice: subscription.status === "active" ? 149 : Number(business.data.planPrice || 0)
+              subscriptionStatus,
+              currentPeriodEnd,
+              subscriptionEndsAt: currentPeriodEnd,
+              cancelAtPeriodEnd,
+
+              // Mientras siga activa, sigue siendo Pro aunque esté cancelada al final del periodo
+              plan: subscriptionStatus === "active" ? "pro" : business.data.plan || "free",
+              planName:
+                subscriptionStatus === "active"
+                  ? "Plan Pro"
+                  : business.data.planName || "Plan Inicio",
+              planPrice:
+                subscriptionStatus === "active"
+                  ? 179
+                  : Number(business.data.planPrice || 0)
             },
             { merge: true }
           );
@@ -159,11 +211,14 @@ exports.handler = async (event) => {
             db,
             business.id,
             "stripe_subscription_updated",
-            "La suscripción cambió de estado.",
+            cancelAtPeriodEnd
+              ? "La suscripción fue programada para cancelarse al final del periodo."
+              : "La suscripción cambió de estado.",
             {
               stripeSubscriptionId: subscription.id,
-              status: subscription.status || "",
-              cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end)
+              status: subscriptionStatus,
+              cancelAtPeriodEnd,
+              currentPeriodEnd
             }
           );
         }
@@ -176,6 +231,7 @@ exports.handler = async (event) => {
         const stripeCustomerId = subscription.customer;
 
         const business = await findBusinessByCustomerId(db, stripeCustomerId);
+
         if (business) {
           await business.ref.set(
             {
@@ -186,7 +242,9 @@ exports.handler = async (event) => {
               subscriptionStatus: "canceled",
               stripeSubscriptionId: subscription.id || "",
               currentPeriodEnd: subscription.current_period_end || null,
-              cancelAtPeriodEnd: false
+              subscriptionEndsAt: subscription.current_period_end || null,
+              cancelAtPeriodEnd: false,
+              paymentIssue: false
             },
             { merge: true }
           );
@@ -195,7 +253,7 @@ exports.handler = async (event) => {
             db,
             business.id,
             "stripe_subscription_deleted",
-            "La suscripción Pro fue cancelada.",
+            "La suscripción Pro terminó y la cuenta volvió a Plan Inicio.",
             {
               stripeSubscriptionId: subscription.id || ""
             }
