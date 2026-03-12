@@ -36,7 +36,7 @@ function quoteStatusOptions(current) {
   const statuses = ["draft", "sent", "pending", "negotiating", "won", "lost"];
   return statuses
     .map(
-      status =>
+      (status) =>
         `<option value="${status}" ${current === status ? "selected" : ""}>${statusLabel(status)}</option>`
     )
     .join("");
@@ -46,7 +46,10 @@ function buildUsageDots(current = 0, limit = 3) {
   return `
     <div class="plan-usage-dots">
       ${Array.from({ length: limit })
-        .map((_, index) => `<span class="plan-usage-dot ${index < current ? "is-filled" : ""}"></span>`)
+        .map(
+          (_, index) =>
+            `<span class="plan-usage-dot ${index < current ? "is-filled" : ""}"></span>`
+        )
         .join("")}
     </div>
   `;
@@ -89,10 +92,13 @@ function renderQuotePlanAlert() {
 }
 
 function applyFilters() {
-  const search = (document.getElementById("quotes-search")?.value || "").toLowerCase().trim();
+  const search = (document.getElementById("quotes-search")?.value || "")
+    .toLowerCase()
+    .trim();
+
   const status = document.getElementById("quotes-filter-status")?.value || "";
 
-  filteredQuotes = quotesCache.filter(q => {
+  filteredQuotes = quotesCache.filter((q) => {
     const haystack = [
       q.folio || "",
       q.clientNameSnapshot || "",
@@ -114,6 +120,8 @@ function renderRows() {
   const tbody = document.getElementById("quotes-table-body");
   const count = document.getElementById("quotes-count");
   const canDelete = canDeleteInCurrentPlan();
+
+  if (!tbody || !count) return;
 
   count.textContent = `${filteredQuotes.length} registros`;
 
@@ -138,7 +146,7 @@ function renderRows() {
 
   tbody.innerHTML = filteredQuotes
     .map(
-      quote => `
+      (quote) => `
       <tr>
         <td>${escapeHtml(quote.folio || "—")}</td>
         <td>${escapeHtml(quote.clientNameSnapshot || "—")}</td>
@@ -152,13 +160,25 @@ function renderRows() {
         <td>${escapeHtml(quote.linkedType || "—")}</td>
         <td>
           <div class="btn-row">
-            <a href="#quote-editor?id=${quote.id}" class="btn btn-secondary btn-sm">Editar</a>
-            <button class="btn btn-secondary btn-sm js-download-quote" data-id="${quote.id}">PDF</button>
-            ${
-              canDelete
-                ? `<button class="btn btn-secondary btn-sm js-delete-quote" data-id="${quote.id}">Eliminar</button>`
-                : ""
-            }
+            <a href="#quote-editor?id=${quote.id}" class="btn btn-secondary btn-sm">
+              Editar
+            </a>
+
+            <button class="btn btn-secondary btn-sm js-download-quote" data-id="${quote.id}">
+              PDF
+            </button>
+
+            <button
+              class="btn btn-secondary btn-sm js-delete-quote ${canDelete ? "" : "btn-disabled"}"
+              data-id="${quote.id}"
+              ${canDelete ? "" : "disabled"}
+            >
+              Eliminar ${
+                canDelete
+                  ? ""
+                  : '<span class="badge-pro">PRO</span>'
+              }
+            </button>
           </div>
         </td>
       </tr>
@@ -182,7 +202,7 @@ async function loadQuotes() {
 }
 
 function bindActions() {
-  document.querySelectorAll(".quote-status-select").forEach(select => {
+  document.querySelectorAll(".quote-status-select").forEach((select) => {
     select.onchange = async () => {
       const id = select.dataset.id;
       const status = select.value;
@@ -192,9 +212,15 @@ function bindActions() {
     };
   });
 
-  document.querySelectorAll(".js-delete-quote").forEach(btn => {
+  document.querySelectorAll(".js-delete-quote").forEach((btn) => {
     btn.onclick = async () => {
-      const quote = quotesCache.find(q => q.id === btn.dataset.id);
+      if (!canDeleteInCurrentPlan()) {
+        showToast("Eliminar cotizaciones está disponible en Plan Pro");
+        window.location.hash = "settings";
+        return;
+      }
+
+      const quote = quotesCache.find((q) => q.id === btn.dataset.id);
       if (!quote) return;
 
       if (!confirm(`Eliminar cotización ${quote.folio}?`)) return;
@@ -205,7 +231,7 @@ function bindActions() {
     };
   });
 
-  document.querySelectorAll(".js-download-quote").forEach(btn => {
+  document.querySelectorAll(".js-download-quote").forEach((btn) => {
     btn.onclick = async () => {
       const quoteId = btn.dataset.id;
 
@@ -313,6 +339,7 @@ export function renderQuotes() {
 
 export function initQuotes() {
   loadQuotes();
+
   document.getElementById("quotes-search")?.addEventListener("input", applyFilters);
   document.getElementById("quotes-filter-status")?.addEventListener("change", applyFilters);
 }
