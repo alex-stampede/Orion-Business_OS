@@ -112,6 +112,27 @@ function getBusinessId() {
   return businessId;
 }
 
+function getSortableValue(value) {
+  if (!value) return 0;
+
+  if (typeof value === "number") return value;
+
+  if (value?.toDate) {
+    try {
+      return value.toDate().getTime();
+    } catch {
+      return 0;
+    }
+  }
+
+  if (value instanceof Date) return value.getTime();
+
+  const parsed = new Date(value);
+  if (!Number.isNaN(parsed.getTime())) return parsed.getTime();
+
+  return 0;
+}
+
 export function getBusinessCollection(collectionName) {
   const businessId = getBusinessId();
   return collection(db, "businesses", businessId, collectionName);
@@ -137,32 +158,83 @@ export async function listBusinessCollection(
   direction = "desc"
 ) {
   const ref = getBusinessCollection(collectionName);
-  const q = query(ref, orderBy(orderField, direction));
-  const snapshot = await getDocs(q);
 
-  return snapshot.docs.map(item => ({
-    id: item.id,
-    ...item.data()
-  }));
+  try {
+    const q = query(ref, orderBy(orderField, direction));
+    const snapshot = await getDocs(q);
+
+    return snapshot.docs.map(item => ({
+      id: item.id,
+      ...item.data()
+    }));
+  } catch (error) {
+    console.warn(`Fallback sin orderBy en ${collectionName}:`, error);
+
+    const snapshot = await getDocs(ref);
+
+    const docs = snapshot.docs.map(item => ({
+      id: item.id,
+      ...item.data()
+    }));
+
+    return docs.sort((a, b) => {
+      const aValue =
+        getSortableValue(a?.[orderField]) ||
+        getSortableValue(a?.createdAtMs) ||
+        getSortableValue(a?.updatedAtMs);
+
+      const bValue =
+        getSortableValue(b?.[orderField]) ||
+        getSortableValue(b?.createdAtMs) ||
+        getSortableValue(b?.updatedAtMs);
+
+      return direction === "asc" ? aValue - bValue : bValue - aValue;
+    });
+  }
 }
 
 export async function listRecentActivities(maxItems = 8) {
   const ref = getBusinessCollection("activities");
-  const q = query(ref, orderBy("createdAt", "desc"), limit(maxItems));
-  const snapshot = await getDocs(q);
 
-  return snapshot.docs.map(item => ({
-    id: item.id,
-    ...item.data()
-  }));
+  try {
+    const q = query(ref, orderBy("createdAt", "desc"), limit(maxItems));
+    const snapshot = await getDocs(q);
+
+    return snapshot.docs.map(item => ({
+      id: item.id,
+      ...item.data()
+    }));
+  } catch (error) {
+    console.warn("Fallback sin orderBy en activities:", error);
+
+    const snapshot = await getDocs(ref);
+    const docs = snapshot.docs.map(item => ({
+      id: item.id,
+      ...item.data()
+    }));
+
+    return docs
+      .sort((a, b) => {
+        const aValue = getSortableValue(a?.createdAt) || getSortableValue(a?.createdAtMs);
+        const bValue = getSortableValue(b?.createdAt) || getSortableValue(b?.createdAtMs);
+        return bValue - aValue;
+      })
+      .slice(0, maxItems);
+  }
 }
 
 export async function createBusinessDoc(collectionName, data) {
   const ref = getBusinessCollection(collectionName);
+  const now = new Date();
+
   const payload = {
     ...data,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp()
+    createdAt: now,
+    updatedAt: now,
+    createdAtMs: now.getTime(),
+    updatedAtMs: now.getTime(),
+    serverCreatedAt: serverTimestamp(),
+    serverUpdatedAt: serverTimestamp()
   };
 
   const result = await addDoc(ref, payload);
@@ -171,9 +243,13 @@ export async function createBusinessDoc(collectionName, data) {
 
 export async function updateBusinessDoc(collectionName, docId, data) {
   const ref = getBusinessDoc(collectionName, docId);
+  const now = new Date();
+
   await updateDoc(ref, {
     ...data,
-    updatedAt: serverTimestamp()
+    updatedAt: now,
+    updatedAtMs: now.getTime(),
+    serverUpdatedAt: serverTimestamp()
   });
 }
 
@@ -210,12 +286,15 @@ export async function getBusinessSettings() {
 export async function saveBusinessSettings(data) {
   const businessId = getBusinessId();
   const ref = doc(db, "businesses", businessId, "settings", "general");
+  const now = new Date();
 
   await setDoc(
     ref,
     {
       ...data,
-      updatedAt: serverTimestamp()
+      updatedAt: now,
+      updatedAtMs: now.getTime(),
+      serverUpdatedAt: serverTimestamp()
     },
     { merge: true }
   );
@@ -253,12 +332,15 @@ export async function uploadBusinessLogo(file) {
 
 export async function addActivity(type, message, meta = {}) {
   const ref = getBusinessCollection("activities");
+  const now = new Date();
 
   await addDoc(ref, {
     type,
     message,
     meta,
-    createdAt: serverTimestamp()
+    createdAt: now,
+    createdAtMs: now.getTime(),
+    serverCreatedAt: serverTimestamp()
   });
 }
 
@@ -364,6 +446,7 @@ export async function getDashboardMetrics() {
 export async function convertLeadToClient(leadId, leadData, quoteId = null) {
   const businessId = getBusinessId();
   const batch = writeBatch(db);
+  const now = new Date();
 
   const leadRef = doc(db, "businesses", businessId, "leads", leadId);
   const newClientRef = doc(collection(db, "businesses", businessId, "clients"));
@@ -374,8 +457,12 @@ export async function convertLeadToClient(leadId, leadData, quoteId = null) {
     email: leadData.email || "",
     phone: leadData.phone || "",
     sourceLeadId: leadId,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp()
+    createdAt: now,
+    updatedAt: now,
+    createdAtMs: now.getTime(),
+    updatedAtMs: now.getTime(),
+    serverCreatedAt: serverTimestamp(),
+    serverUpdatedAt: serverTimestamp()
   });
 
   batch.delete(leadRef);
@@ -385,7 +472,9 @@ export async function convertLeadToClient(leadId, leadData, quoteId = null) {
     batch.update(quoteRef, {
       linkedType: "client",
       linkedId: newClientRef.id,
-      updatedAt: serverTimestamp()
+      updatedAt: now,
+      updatedAtMs: now.getTime(),
+      serverUpdatedAt: serverTimestamp()
     });
   }
 
@@ -445,23 +534,51 @@ export async function getQuoteById(quoteId) {
 
 export async function getQuoteItems(quoteId) {
   const ref = getQuoteItemsCollection(quoteId);
-  const q = query(ref, orderBy("createdAt", "asc"));
-  const snapshot = await getDocs(q);
 
-  return snapshot.docs.map(item => ({
-    id: item.id,
-    ...item.data()
-  }));
+  try {
+    const q = query(ref, orderBy("createdAt", "asc"));
+    const snapshot = await getDocs(q);
+
+    return snapshot.docs.map(item => ({
+      id: item.id,
+      ...item.data()
+    }));
+  } catch (error) {
+    console.warn("Fallback sin orderBy en quote items:", error);
+
+    const snapshot = await getDocs(ref);
+    const docs = snapshot.docs.map(item => ({
+      id: item.id,
+      ...item.data()
+    }));
+
+    return docs.sort((a, b) => {
+      const aValue =
+        getSortableValue(a?.createdAt) ||
+        getSortableValue(a?.createdAtMs);
+
+      const bValue =
+        getSortableValue(b?.createdAt) ||
+        getSortableValue(b?.createdAtMs);
+
+      return aValue - bValue;
+    });
+  }
 }
 
 export async function createQuote({ quoteData, items }) {
   const quoteId = await createBusinessDoc("quotes", quoteData);
+  const now = new Date();
 
   for (const item of items) {
     await addDoc(getQuoteItemsCollection(quoteId), {
       ...item,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
+      createdAt: now,
+      updatedAt: now,
+      createdAtMs: now.getTime(),
+      updatedAtMs: now.getTime(),
+      serverCreatedAt: serverTimestamp(),
+      serverUpdatedAt: serverTimestamp()
     });
   }
 
@@ -483,6 +600,7 @@ export async function updateQuote(quoteId, quoteData, items = null) {
     const businessId = getBusinessId();
     const existingItems = await getQuoteItems(quoteId);
     const batch = writeBatch(db);
+    const now = new Date();
 
     existingItems.forEach(item => {
       const itemRef = doc(
@@ -504,8 +622,12 @@ export async function updateQuote(quoteId, quoteData, items = null) {
 
       batch.set(itemRef, {
         ...item,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
+        createdAt: now,
+        updatedAt: now,
+        createdAtMs: now.getTime(),
+        updatedAtMs: now.getTime(),
+        serverCreatedAt: serverTimestamp(),
+        serverUpdatedAt: serverTimestamp()
       });
     });
 
@@ -677,13 +799,16 @@ export async function updateBusinessPlan(planCode) {
 
   const selectedPlan = PLAN_CONFIG[planCode] || PLAN_CONFIG.free;
   const ref = doc(db, "businesses", businessId);
+  const now = new Date();
 
   await updateDoc(ref, {
     plan: selectedPlan.code,
     planName: selectedPlan.name,
     planPrice: selectedPlan.price,
     billingCycle: "monthly",
-    updatedAt: serverTimestamp()
+    updatedAt: now,
+    updatedAtMs: now.getTime(),
+    serverUpdatedAt: serverTimestamp()
   });
 
   setState({
@@ -745,11 +870,25 @@ async function listAllSubcollectionDocs(subcollectionName, orderField = "created
         }));
       } catch {
         const snapshot = await getDocs(ref);
-        return snapshot.docs.map(item => ({
+        const docs = snapshot.docs.map(item => ({
           id: item.id,
           businessId: business.id,
           ...item.data()
         }));
+
+        return docs.sort((a, b) => {
+          const aValue =
+            getSortableValue(a?.[orderField]) ||
+            getSortableValue(a?.createdAtMs) ||
+            getSortableValue(a?.updatedAtMs);
+
+          const bValue =
+            getSortableValue(b?.[orderField]) ||
+            getSortableValue(b?.createdAtMs) ||
+            getSortableValue(b?.updatedAtMs);
+
+          return bValue - aValue;
+        });
       }
     })
   );
