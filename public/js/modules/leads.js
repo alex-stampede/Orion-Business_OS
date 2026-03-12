@@ -1,5 +1,10 @@
 import { escapeHtml, formatDate } from "../helpers.js";
-import { showToast } from "../ui.js";
+import {
+  showToast,
+  openModal,
+  closeModal,
+  bindModalFormSubmit
+} from "../ui.js";
 import {
   listBusinessCollection,
   createLead,
@@ -17,7 +22,10 @@ function buildUsageDots(current = 0, limit = 3) {
   return `
     <div class="plan-usage-dots">
       ${Array.from({ length: limit })
-        .map((_, index) => `<span class="plan-usage-dot ${index < current ? "is-filled" : ""}"></span>`)
+        .map(
+          (_, index) =>
+            `<span class="plan-usage-dot ${index < current ? "is-filled" : ""}"></span>`
+        )
         .join("")}
     </div>
   `;
@@ -35,7 +43,7 @@ function renderLeadPlanAlert() {
   }
 
   const current = leadsCache.length;
-  const limit = plan.limits.leads;
+  const limit = plan.limits.leads || 3;
 
   box.innerHTML = `
     <article class="app-panel plan-usage-card">
@@ -60,15 +68,19 @@ function renderLeadPlanAlert() {
 }
 
 function applyLeadFilters() {
-  const search = (document.getElementById("leads-search")?.value || "").toLowerCase().trim();
+  const search = (document.getElementById("leads-search")?.value || "")
+    .toLowerCase()
+    .trim();
+
   const status = document.getElementById("leads-filter-status")?.value || "";
 
-  filteredLeads = leadsCache.filter(lead => {
+  filteredLeads = leadsCache.filter((lead) => {
     const haystack = [
       lead.name || "",
       lead.company || "",
       lead.email || "",
-      lead.phone || ""
+      lead.phone || "",
+      lead.source || ""
     ]
       .join(" ")
       .toLowerCase();
@@ -85,67 +97,152 @@ function applyLeadFilters() {
 function openLeadModal(lead = null) {
   const isEdit = Boolean(lead);
 
-  const name = prompt("Nombre del lead", lead?.name || "");
-  if (name === null) return;
+  openModal({
+    title: isEdit ? "Editar lead" : "Nuevo lead",
+    content: `
+      <form id="lead-modal-form" style="display:grid; gap:16px;">
+        <p class="modal-note">
+          ${
+            isEdit
+              ? "Actualiza la información del prospecto."
+              : "Captura la información del lead para dar seguimiento comercial."
+          }
+        </p>
 
-  const company = prompt("Empresa", lead?.company || "");
-  if (company === null) return;
+        <div class="modal-grid-2">
+          <div class="field">
+            <label for="lead-name">Nombre</label>
+            <input
+              id="lead-name"
+              name="name"
+              type="text"
+              value="${escapeHtml(lead?.name || "")}"
+              placeholder="Nombre del contacto"
+              required
+            />
+          </div>
 
-  const email = prompt("Correo", lead?.email || "");
-  if (email === null) return;
+          <div class="field">
+            <label for="lead-company">Empresa</label>
+            <input
+              id="lead-company"
+              name="company"
+              type="text"
+              value="${escapeHtml(lead?.company || "")}"
+              placeholder="Empresa o negocio"
+            />
+          </div>
 
-  const phone = prompt("Teléfono", lead?.phone || "");
-  if (phone === null) return;
+          <div class="field">
+            <label for="lead-email">Correo</label>
+            <input
+              id="lead-email"
+              name="email"
+              type="email"
+              value="${escapeHtml(lead?.email || "")}"
+              placeholder="correo@empresa.com"
+            />
+          </div>
 
-  const source = prompt("Origen", lead?.source || "Manual");
-  if (source === null) return;
+          <div class="field">
+            <label for="lead-phone">Teléfono</label>
+            <input
+              id="lead-phone"
+              name="phone"
+              type="text"
+              value="${escapeHtml(lead?.phone || "")}"
+              placeholder="33 0000 0000"
+            />
+          </div>
 
-  const status = prompt("Estatus", lead?.status || "Nuevo");
-  if (status === null) return;
+          <div class="field">
+            <label for="lead-source">Origen</label>
+            <input
+              id="lead-source"
+              name="source"
+              type="text"
+              value="${escapeHtml(lead?.source || "Manual")}"
+              placeholder="Manual, referido, web..."
+            />
+          </div>
 
-  const payload = {
-    name: name.trim(),
-    company: company.trim(),
-    email: email.trim(),
-    phone: phone.trim(),
-    source: source.trim(),
-    status: status.trim() || "Nuevo"
-  };
+          <div class="field">
+            <label for="lead-status">Estatus</label>
+            <select id="lead-status" name="status">
+              <option value="Nuevo" ${
+                (lead?.status || "Nuevo") === "Nuevo" ? "selected" : ""
+              }>Nuevo</option>
+              <option value="Contactado" ${
+                lead?.status === "Contactado" ? "selected" : ""
+              }>Contactado</option>
+              <option value="Cotización enviada" ${
+                lead?.status === "Cotización enviada" ? "selected" : ""
+              }>Cotización enviada</option>
+              <option value="Seguimiento" ${
+                lead?.status === "Seguimiento" ? "selected" : ""
+              }>Seguimiento</option>
+            </select>
+          </div>
+        </div>
+      </form>
+    `,
+    actions: `
+      <button class="btn btn-secondary" type="button" id="cancel-lead-modal">
+        Cancelar
+      </button>
+      <button class="btn btn-primary" type="submit" form="lead-modal-form">
+        ${isEdit ? "Guardar cambios" : "Crear lead"}
+      </button>
+    `
+  });
 
-  if (isEdit) {
-    updateLead(lead.id, payload)
-      .then(() => {
+  document
+    .getElementById("cancel-lead-modal")
+    ?.addEventListener("click", closeModal);
+
+  bindModalFormSubmit("lead-modal-form", async (form) => {
+    const formData = new FormData(form);
+
+    const payload = {
+      name: String(formData.get("name") || "").trim(),
+      company: String(formData.get("company") || "").trim(),
+      email: String(formData.get("email") || "").trim(),
+      phone: String(formData.get("phone") || "").trim(),
+      source: String(formData.get("source") || "").trim() || "Manual",
+      status: String(formData.get("status") || "").trim() || "Nuevo"
+    };
+
+    try {
+      if (isEdit) {
+        await updateLead(lead.id, payload);
         showToast("Lead actualizado");
-        return loadLeads();
-      })
-      .catch(error => {
-        console.error(error);
-        showToast("No se pudo actualizar el lead");
-      });
-  } else {
-    canCreateEntity("leads")
-      .then(permission => {
+      } else {
+        const permission = await canCreateEntity("leads");
+
         if (!permission.allowed) {
           showToast(getPlanLimitMessage("leads"));
           window.location.hash = "settings";
           return;
         }
 
-        return createLead(payload).then(() => {
-          showToast("Lead creado");
-          return loadLeads();
-        });
-      })
-      .catch(error => {
-        console.error(error);
-        showToast("No se pudo crear el lead");
-      });
-  }
+        await createLead(payload);
+        showToast("Lead creado");
+      }
+
+      closeModal();
+      await loadLeads();
+    } catch (error) {
+      console.error(error);
+      showToast(isEdit ? "No se pudo actualizar el lead" : "No se pudo crear el lead");
+    }
+  });
 }
 
 function renderLeadRows() {
   const tbody = document.getElementById("leads-table-body");
   const count = document.getElementById("leads-count");
+
+  if (!tbody || !count) return;
 
   count.textContent = `${filteredLeads.length} registros`;
 
@@ -166,13 +263,16 @@ function renderLeadRows() {
       </tr>
     `;
 
-    document.getElementById("create-first-lead-btn")?.addEventListener("click", () => openLeadModal());
+    document
+      .getElementById("create-first-lead-btn")
+      ?.addEventListener("click", () => openLeadModal());
+
     return;
   }
 
   tbody.innerHTML = filteredLeads
     .map(
-      lead => `
+      (lead) => `
       <tr>
         <td>${escapeHtml(lead.name || "—")}</td>
         <td>${escapeHtml(lead.company || "—")}</td>
@@ -181,9 +281,15 @@ function renderLeadRows() {
         <td>${lead.createdAt?.toDate ? formatDate(lead.createdAt.toDate()) : "—"}</td>
         <td>
           <div class="btn-row">
-            <button class="btn btn-secondary btn-sm js-edit-lead" data-id="${lead.id}" type="button">Editar</button>
-            <button class="btn btn-secondary btn-sm js-quote-lead" data-id="${lead.id}" type="button">Cotizar</button>
-            <button class="btn btn-secondary btn-sm js-delete-lead" data-id="${lead.id}" type="button">Eliminar</button>
+            <button class="btn btn-secondary btn-sm js-edit-lead" data-id="${lead.id}" type="button">
+              Editar
+            </button>
+            <button class="btn btn-secondary btn-sm js-quote-lead" data-id="${lead.id}" type="button">
+              Cotizar
+            </button>
+            <button class="btn btn-secondary btn-sm js-delete-lead" data-id="${lead.id}" type="button">
+              Eliminar
+            </button>
           </div>
         </td>
       </tr>
@@ -195,22 +301,22 @@ function renderLeadRows() {
 }
 
 function bindLeadActions() {
-  document.querySelectorAll(".js-edit-lead").forEach(btn => {
+  document.querySelectorAll(".js-edit-lead").forEach((btn) => {
     btn.onclick = () => {
-      const lead = leadsCache.find(item => item.id === btn.dataset.id);
+      const lead = leadsCache.find((item) => item.id === btn.dataset.id);
       if (lead) openLeadModal(lead);
     };
   });
 
-  document.querySelectorAll(".js-quote-lead").forEach(btn => {
+  document.querySelectorAll(".js-quote-lead").forEach((btn) => {
     btn.onclick = () => {
       window.location.hash = `quote-editor?type=lead&id=${btn.dataset.id}`;
     };
   });
 
-  document.querySelectorAll(".js-delete-lead").forEach(btn => {
+  document.querySelectorAll(".js-delete-lead").forEach((btn) => {
     btn.onclick = async () => {
-      const lead = leadsCache.find(item => item.id === btn.dataset.id);
+      const lead = leadsCache.find((item) => item.id === btn.dataset.id);
       if (!lead) return;
 
       if (!confirm(`Eliminar lead "${lead.name}"?`)) return;
@@ -252,7 +358,9 @@ export function renderLeads() {
         </div>
 
         <div class="btn-row">
-          <button class="btn btn-primary" id="new-lead-btn" type="button">Nuevo lead</button>
+          <button class="btn btn-primary" id="new-lead-btn" type="button">
+            Nuevo lead
+          </button>
         </div>
       </div>
 
@@ -263,7 +371,11 @@ export function renderLeads() {
           <div class="form-grid-2 mb-4">
             <div class="field">
               <label>Buscar</label>
-              <input id="leads-search" type="text" placeholder="Nombre, empresa, email, teléfono..." />
+              <input
+                id="leads-search"
+                type="text"
+                placeholder="Nombre, empresa, email, teléfono..."
+              />
             </div>
 
             <div class="field">
@@ -311,7 +423,15 @@ export function renderLeads() {
 export function initLeads() {
   loadLeads();
 
-  document.getElementById("new-lead-btn")?.addEventListener("click", () => openLeadModal());
-  document.getElementById("leads-search")?.addEventListener("input", applyLeadFilters);
-  document.getElementById("leads-filter-status")?.addEventListener("change", applyLeadFilters);
+  document
+    .getElementById("new-lead-btn")
+    ?.addEventListener("click", () => openLeadModal());
+
+  document
+    .getElementById("leads-search")
+    ?.addEventListener("input", applyLeadFilters);
+
+  document
+    .getElementById("leads-filter-status")
+    ?.addEventListener("change", applyLeadFilters);
 }
