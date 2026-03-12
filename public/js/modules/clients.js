@@ -5,6 +5,7 @@ import {
   closeModal,
   bindModalFormSubmit
 } from "../ui.js";
+
 import {
   listBusinessCollection,
   createClient,
@@ -12,7 +13,8 @@ import {
   deleteClient,
   getCurrentBusinessPlan,
   canCreateEntity,
-  getPlanLimitMessage
+  getPlanLimitMessage,
+  canDeleteInCurrentPlan
 } from "../firestore-service.js";
 
 let clientsCache = [];
@@ -23,8 +25,10 @@ function buildUsageDots(current = 0, limit = 3) {
     <div class="plan-usage-dots">
       ${Array.from({ length: limit })
         .map(
-          (_, index) =>
-            `<span class="plan-usage-dot ${index < current ? "is-filled" : ""}"></span>`
+          (_, i) =>
+            `<span class="plan-usage-dot ${
+              i < current ? "is-filled" : ""
+            }"></span>`
         )
         .join("")}
     </div>
@@ -93,72 +97,70 @@ function openClientModal(client = null) {
 
   openModal({
     title: isEdit ? "Editar cliente" : "Nuevo cliente",
+
     content: `
-      <form id="client-modal-form" style="display:grid; gap:16px;">
-        <p class="modal-note">
-          ${
-            isEdit
-              ? "Actualiza la información del cliente."
-              : "Registra un nuevo cliente dentro de tu base comercial."
-          }
-        </p>
+<form id="client-modal-form" style="display:grid;gap:16px">
 
-        <div class="modal-grid-2">
-          <div class="field">
-            <label for="client-name">Empresa / Cliente</label>
-            <input
-              id="client-name"
-              name="name"
-              type="text"
-              value="${escapeHtml(client?.name || "")}"
-              placeholder="Nombre del cliente o empresa"
-              required
-            />
-          </div>
+<p class="modal-note">
+${
+  isEdit
+    ? "Actualiza la información del cliente."
+    : "Registra un nuevo cliente dentro de tu base comercial."
+}
+</p>
 
-          <div class="field">
-            <label for="client-contact">Contacto</label>
-            <input
-              id="client-contact"
-              name="contact"
-              type="text"
-              value="${escapeHtml(client?.contact || "")}"
-              placeholder="Nombre del contacto"
-            />
-          </div>
+<div class="modal-grid-2">
 
-          <div class="field">
-            <label for="client-email">Correo</label>
-            <input
-              id="client-email"
-              name="email"
-              type="email"
-              value="${escapeHtml(client?.email || "")}"
-              placeholder="correo@empresa.com"
-            />
-          </div>
+<div class="field">
+<label>Empresa / Cliente</label>
+<input
+  name="name"
+  value="${escapeHtml(client?.name || "")}"
+  placeholder="Nombre del cliente o empresa"
+  required
+>
+</div>
 
-          <div class="field">
-            <label for="client-phone">Teléfono</label>
-            <input
-              id="client-phone"
-              name="phone"
-              type="text"
-              value="${escapeHtml(client?.phone || "")}"
-              placeholder="33 0000 0000"
-            />
-          </div>
-        </div>
-      </form>
-    `,
+<div class="field">
+<label>Contacto</label>
+<input
+  name="contact"
+  value="${escapeHtml(client?.contact || "")}"
+  placeholder="Nombre del contacto"
+>
+</div>
+
+<div class="field">
+<label>Email</label>
+<input
+  name="email"
+  value="${escapeHtml(client?.email || "")}"
+  placeholder="correo@empresa.com"
+>
+</div>
+
+<div class="field">
+<label>Teléfono</label>
+<input
+  name="phone"
+  value="${escapeHtml(client?.phone || "")}"
+  placeholder="33 0000 0000"
+>
+</div>
+
+</div>
+</form>
+`,
+
     actions: `
-      <button class="btn btn-secondary" type="button" id="cancel-client-modal">
-        Cancelar
-      </button>
-      <button class="btn btn-primary" type="submit" form="client-modal-form">
-        ${isEdit ? "Guardar cambios" : "Crear cliente"}
-      </button>
-    `
+<button class="btn btn-secondary" id="cancel-client-modal">
+Cancelar
+</button>
+
+<button class="btn btn-primary" type="submit" form="client-modal-form">
+${isEdit ? "Guardar cambios" : "Crear cliente"}
+</button>
+`
   });
 
   document
@@ -166,18 +168,11 @@ function openClientModal(client = null) {
     ?.addEventListener("click", closeModal);
 
   bindModalFormSubmit("client-modal-form", async (form) => {
-    const formData = new FormData(form);
-
-    const payload = {
-      name: String(formData.get("name") || "").trim(),
-      contact: String(formData.get("contact") || "").trim(),
-      email: String(formData.get("email") || "").trim(),
-      phone: String(formData.get("phone") || "").trim()
-    };
+    const data = Object.fromEntries(new FormData(form));
 
     try {
       if (isEdit) {
-        await updateClient(client.id, payload);
+        await updateClient(client.id, data);
         showToast("Cliente actualizado");
       } else {
         const permission = await canCreateEntity("clients");
@@ -188,7 +183,7 @@ function openClientModal(client = null) {
           return;
         }
 
-        await createClient(payload);
+        await createClient(data);
         showToast("Cliente creado");
       }
 
@@ -196,11 +191,7 @@ function openClientModal(client = null) {
       await loadClients();
     } catch (error) {
       console.error(error);
-      showToast(
-        isEdit
-          ? "No se pudo actualizar el cliente"
-          : "No se pudo crear el cliente"
-      );
+      showToast("Error guardando cliente");
     }
   });
 }
@@ -209,26 +200,32 @@ function renderClientRows() {
   const tbody = document.getElementById("clients-table-body");
   const count = document.getElementById("clients-count");
 
+  const canDelete = canDeleteInCurrentPlan();
+
   if (!tbody || !count) return;
 
   count.textContent = `${filteredClients.length} registros`;
 
   if (!filteredClients.length) {
     tbody.innerHTML = `
-      <tr>
-        <td colspan="6">
-          <div style="padding:40px;text-align:center">
-            <h3>Aún no has creado clientes</h3>
-            <p class="muted">
-              Empieza agregando tu primer cliente.
-            </p>
-            <button class="btn btn-primary" id="create-first-client-btn" type="button">
-              Crear cliente
-            </button>
-          </div>
-        </td>
-      </tr>
-    `;
+<tr>
+<td colspan="6">
+<div style="padding:40px;text-align:center">
+
+<h3>Aún no has creado clientes</h3>
+
+<p class="muted">
+Empieza agregando tu primer cliente.
+</p>
+
+<button class="btn btn-primary" id="create-first-client-btn">
+Crear cliente
+</button>
+
+</div>
+</td>
+</tr>
+`;
 
     document
       .getElementById("create-first-client-btn")
@@ -240,27 +237,56 @@ function renderClientRows() {
   tbody.innerHTML = filteredClients
     .map(
       (client) => `
-      <tr>
-        <td>${escapeHtml(client.name || "—")}</td>
-        <td>${escapeHtml(client.contact || "—")}</td>
-        <td>${escapeHtml(client.email || "—")}</td>
-        <td>${escapeHtml(client.phone || "—")}</td>
-        <td>${client.createdAt?.toDate ? formatDate(client.createdAt.toDate()) : "—"}</td>
-        <td>
-          <div class="btn-row">
-            <button class="btn btn-secondary btn-sm js-edit-client" data-id="${client.id}" type="button">
-              Editar
-            </button>
-            <button class="btn btn-secondary btn-sm js-quote-client" data-id="${client.id}" type="button">
-              Cotizar
-            </button>
-            <button class="btn btn-secondary btn-sm js-delete-client" data-id="${client.id}" type="button">
-              Eliminar
-            </button>
-          </div>
-        </td>
-      </tr>
-    `
+<tr>
+
+<td>${escapeHtml(client.name || "—")}</td>
+
+<td>${escapeHtml(client.contact || "—")}</td>
+
+<td>${escapeHtml(client.email || "—")}</td>
+
+<td>${escapeHtml(client.phone || "—")}</td>
+
+<td>${
+        client.createdAt?.toDate
+          ? formatDate(client.createdAt.toDate())
+          : "—"
+      }</td>
+
+<td>
+
+<div class="btn-row">
+
+<button class="btn btn-secondary btn-sm js-edit-client"
+data-id="${client.id}">
+Editar
+</button>
+
+<button class="btn btn-secondary btn-sm js-quote-client"
+data-id="${client.id}">
+Cotizar
+</button>
+
+<button class="btn btn-secondary btn-sm js-delete-client ${
+        canDelete ? "" : "btn-disabled"
+      }"
+data-id="${client.id}"
+${canDelete ? "" : "disabled"}>
+
+Eliminar ${
+        canDelete
+          ? ""
+          : '<span class="badge-pro">PRO</span>'
+      }
+
+</button>
+
+</div>
+
+</td>
+
+</tr>
+`
     )
     .join("");
 
@@ -270,8 +296,8 @@ function renderClientRows() {
 function bindClientActions() {
   document.querySelectorAll(".js-edit-client").forEach((btn) => {
     btn.onclick = () => {
-      const client = clientsCache.find((item) => item.id === btn.dataset.id);
-      if (client) openClientModal(client);
+      const client = clientsCache.find((c) => c.id === btn.dataset.id);
+      openClientModal(client);
     };
   });
 
@@ -283,7 +309,13 @@ function bindClientActions() {
 
   document.querySelectorAll(".js-delete-client").forEach((btn) => {
     btn.onclick = async () => {
-      const client = clientsCache.find((item) => item.id === btn.dataset.id);
+      if (!canDeleteInCurrentPlan()) {
+        showToast("Eliminar clientes está disponible en Plan Pro");
+        window.location.hash = "settings";
+        return;
+      }
+
+      const client = clientsCache.find((c) => c.id === btn.dataset.id);
       if (!client) return;
 
       if (!confirm(`Eliminar cliente "${client.name}"?`)) return;
@@ -314,66 +346,69 @@ async function loadClients() {
 
 export function renderClients() {
   return `
-    <section class="app-view glass">
-      <div class="app-view-header">
-        <div class="app-view-title">
-          <p class="eyebrow-sm">Clientes</p>
-          <h2>Base comercial organizada</h2>
-          <p class="muted">
-            Consulta, filtra y gestiona tus clientes desde un solo lugar.
-          </p>
-        </div>
+<section class="app-view glass">
 
-        <div class="btn-row">
-          <button class="btn btn-primary" id="new-client-btn" type="button">
-            Nuevo cliente
-          </button>
-        </div>
-      </div>
+<div class="app-view-header">
 
-      <div class="app-view-grid">
-        <div id="clients-plan-alert"></div>
+<div class="app-view-title">
+<p class="eyebrow-sm">Clientes</p>
+<h2>Base comercial organizada</h2>
+<p class="muted">
+Consulta, filtra y gestiona tus clientes desde un solo lugar.
+</p>
+</div>
 
-        <article class="app-panel">
-          <div class="mb-4">
-            <div class="field">
-              <label>Buscar</label>
-              <input
-                id="clients-search"
-                type="text"
-                placeholder="Empresa, contacto, email, teléfono..."
-              />
-            </div>
-          </div>
+<div class="btn-row">
+<button class="btn btn-primary" id="new-client-btn">
+Nuevo cliente
+</button>
+</div>
 
-          <div class="card-head">
-            <strong>Listado de clientes</strong>
-            <span id="clients-count">Cargando...</span>
-          </div>
+</div>
 
-          <div class="table-shell">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>Empresa</th>
-                  <th>Contacto</th>
-                  <th>Email</th>
-                  <th>Teléfono</th>
-                  <th>Desde</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody id="clients-table-body">
-                <tr>
-                  <td colspan="6">Cargando clientes...</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </article>
-      </div>
-    </section>
-  `;
+<div class="app-view-grid">
+
+<div id="clients-plan-alert"></div>
+
+<article class="app-panel">
+
+<div class="mb-4">
+<div class="field">
+<label>Buscar</label>
+<input
+  id="clients-search"
+  placeholder="Empresa, contacto, email, teléfono..."
+>
+</div>
+</div>
+
+<div class="card-head">
+<strong>Listado de clientes</strong>
+<span id="clients-count"></span>
+</div>
+
+<div class="table-shell">
+<table class="data-table">
+<thead>
+<tr>
+<th>Empresa</th>
+<th>Contacto</th>
+<th>Email</th>
+<th>Teléfono</th>
+<th>Desde</th>
+<th>Acciones</th>
+</tr>
+</thead>
+<tbody id="clients-table-body"></tbody>
+</table>
+</div>
+
+</article>
+
+</div>
+
+</section>
+`;
 }
 
 export function initClients() {
