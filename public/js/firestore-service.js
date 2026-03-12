@@ -32,7 +32,7 @@ export const PLAN_CONFIG = {
   pro: {
     code: "pro",
     name: "Plan Pro",
-    price: 149,
+    price: 179,
     limits: {
       leads: Infinity,
       clients: Infinity,
@@ -595,4 +595,128 @@ export async function updateBusinessPlan(planCode) {
   );
 
   return selectedPlan;
+}
+
+/* =========================
+   ORION ADMIN / GLOBAL METRICS
+========================= */
+
+async function listAllUsers() {
+  const snapshot = await getDocs(collection(db, "users"));
+  return snapshot.docs.map(item => ({
+    id: item.id,
+    ...item.data()
+  }));
+}
+
+async function listAllBusinesses() {
+  const snapshot = await getDocs(collection(db, "businesses"));
+  return snapshot.docs.map(item => ({
+    id: item.id,
+    ...item.data()
+  }));
+}
+
+async function listAllSubcollectionDocs(subcollectionName, orderField = "createdAt") {
+  const businesses = await listAllBusinesses();
+
+  const results = await Promise.all(
+    businesses.map(async business => {
+      const ref = collection(db, "businesses", business.id, subcollectionName);
+
+      try {
+        const q = query(ref, orderBy(orderField, "desc"));
+        const snapshot = await getDocs(q);
+
+        return snapshot.docs.map(item => ({
+          id: item.id,
+          businessId: business.id,
+          ...item.data()
+        }));
+      } catch {
+        const snapshot = await getDocs(ref);
+        return snapshot.docs.map(item => ({
+          id: item.id,
+          businessId: business.id,
+          ...item.data()
+        }));
+      }
+    })
+  );
+
+  return results.flat();
+}
+
+function round2(value) {
+  return Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
+}
+
+export async function getGlobalAdminMetrics() {
+  const [users, businesses, allQuotes, allLeads, allClients] = await Promise.all([
+    listAllUsers(),
+    listAllBusinesses(),
+    listAllSubcollectionDocs("quotes"),
+    listAllSubcollectionDocs("leads"),
+    listAllSubcollectionDocs("clients")
+  ]);
+
+  const totalUsers = users.length;
+  const totalBusinesses = businesses.length;
+
+  const totalProBusinesses = businesses.filter(
+    business => (business.plan || "free") === "pro"
+  ).length;
+
+  const totalFreeBusinesses = businesses.filter(
+    business => (business.plan || "free") !== "pro"
+  ).length;
+
+  const totalQuotes = allQuotes.length;
+  const totalLeads = allLeads.length;
+  const totalClients = allClients.length;
+
+  const wonQuotes = allQuotes.filter(quote => quote.status === "won");
+  const totalWonQuotes = wonQuotes.length;
+
+  const totalQuotedAmount = round2(
+    allQuotes.reduce((acc, quote) => acc + Number(quote.total || 0), 0)
+  );
+
+  const totalWonAmount = round2(
+    wonQuotes.reduce((acc, quote) => acc + Number(quote.total || 0), 0)
+  );
+
+  const estimatedMRR = round2(totalProBusinesses * PLAN_CONFIG.pro.price);
+
+  const freeToProRate =
+    totalBusinesses > 0
+      ? round2((totalProBusinesses / totalBusinesses) * 100)
+      : 0;
+
+  const averageQuotedTicket =
+    totalQuotes > 0
+      ? round2(totalQuotedAmount / totalQuotes)
+      : 0;
+
+  const averageWonTicket =
+    totalWonQuotes > 0
+      ? round2(totalWonAmount / totalWonQuotes)
+      : 0;
+
+  return {
+    totalUsers,
+    totalBusinesses,
+    totalProBusinesses,
+    totalFreeBusinesses,
+    totalQuotes,
+    totalLeads,
+    totalClients,
+    totalWonQuotes,
+    totalQuotedAmount,
+    totalWonAmount,
+    estimatedMRR,
+    freeToProRate,
+    averageQuotedTicket,
+    averageWonTicket
+  };
 }
