@@ -1563,3 +1563,36 @@ button:disabled.btn-disabled {
     border-radius: 22px;
   }
 }
+/* =========================
+   LANDING — CTA INLINE
+========================= */
+
+.cta-inline {
+  margin-top: 36px;
+  padding: 28px 26px;
+  border-radius: 26px;
+  text-align: center;
+
+  background: linear-gradient(
+    180deg,
+    rgba(126, 226, 184, 0.08),
+    rgba(13, 91, 74, 0.12)
+  );
+
+  border: 1px solid rgba(126, 226, 184, 0.18);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+
+  display: grid;
+  gap: 16px;
+  justify-items: center;
+}
+
+.cta-inline p {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.cta-inline .btn-row {
+  justify-content: center;
+}
