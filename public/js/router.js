@@ -93,7 +93,15 @@ function updateAdminNavVisibility() {
   const adminNav = document.querySelector('[data-route="orion-admin"]');
   if (!adminNav) return;
 
-  adminNav.style.display = isSuperAdmin() ? "" : "none";
+  if (isSuperAdmin()) {
+    adminNav.style.removeProperty("display");
+    adminNav.hidden = false;
+    return;
+  }
+
+  // Fuerza ocultar incluso cuando existen reglas CSS con `display: flex !important`.
+  adminNav.style.setProperty("display", "none", "important");
+  adminNav.hidden = true;
 }
 
 export async function renderCurrentRoute() {
