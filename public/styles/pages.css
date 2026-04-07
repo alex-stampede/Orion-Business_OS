@@ -1596,3 +1596,23 @@ button:disabled.btn-disabled {
 .cta-inline .btn-row {
   justify-content: center;
 }
+
+.nav-item-pro {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.nav-item-locked {
+  opacity: 0.78;
+}
+
+.nav-item-locked .badge-pro {
+  display: inline-flex;
+  margin-left: auto;
+}
+
+.nav-item-locked:hover {
+  opacity: 1;
+}
