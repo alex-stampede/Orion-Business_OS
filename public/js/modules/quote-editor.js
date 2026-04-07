@@ -1,5 +1,5 @@
 import { $, formatCurrency, escapeHtml, getHashParams } from "../helpers.js";
-import { showToast } from "../ui.js";
+import { showToast, openModal, closeModal } from "../ui.js";
 import {
   listBusinessCollection,
   getBusinessDocById,
@@ -13,11 +13,14 @@ import {
   canCreateEntity,
   getPlanLimitMessage,
   getCurrentBusinessPlan,
+  listProducts,
+  isProPlan
 } from "../firestore-service.js";
 import { exportQuoteToPDF } from "../pdf.js";
 
 let leadsCache = [];
 let clientsCache = [];
+let productsCache = [];
 let settingsCache = null;
 let editingQuoteId = null;
 
@@ -26,7 +29,7 @@ function getRouteParams() {
   return {
     id: params.get("id"),
     type: params.get("type"),
-    linkedId: params.get("id"),
+    linkedId: params.get("id")
   };
 }
 
@@ -51,7 +54,7 @@ function getSelectedLinkData() {
   return {
     linkType,
     existingLeadId,
-    existingClientId,
+    existingClientId
   };
 }
 
@@ -63,8 +66,10 @@ function renderLeadOptions() {
     <option value="">Selecciona un lead</option>
     ${leadsCache
       .map(
-        (lead) =>
-          `<option value="${lead.id}">${escapeHtml(lead.name || "Sin nombre")} ${lead.company ? `— ${escapeHtml(lead.company)}` : ""}</option>`,
+        lead =>
+          `<option value="${lead.id}">${escapeHtml(lead.name || "Sin nombre")} ${
+            lead.company ? `— ${escapeHtml(lead.company)}` : ""
+          }</option>`
       )
       .join("")}
   `;
@@ -78,8 +83,8 @@ function renderClientOptions() {
     <option value="">Selecciona un cliente</option>
     ${clientsCache
       .map(
-        (client) =>
-          `<option value="${client.id}">${escapeHtml(client.name || "Sin nombre")}</option>`,
+        client =>
+          `<option value="${client.id}">${escapeHtml(client.name || "Sin nombre")}</option>`
       )
       .join("")}
   `;
@@ -100,19 +105,21 @@ function readItems() {
   const rows = Array.from(document.querySelectorAll(".item-row"));
 
   return rows
-    .map((row) => {
+    .map(row => {
       const name = row.querySelector(".item-name")?.value.trim() || "";
       const qty = Number(row.querySelector(".item-qty")?.value || 0);
       const unitPrice = Number(row.querySelector(".item-price")?.value || 0);
+      const productId = row.dataset.productId || "";
 
       return {
         name,
         qty,
         unitPrice,
-        subtotal: qty * unitPrice,
+        productId: productId || null,
+        subtotal: qty * unitPrice
       };
     })
-    .filter((item) => item.name || item.qty || item.unitPrice);
+    .filter(item => item.name || item.qty || item.unitPrice);
 }
 
 function updateSummary() {
@@ -134,7 +141,7 @@ function updateSummary() {
 function bindItemInputs() {
   document
     .querySelectorAll(".item-name, .item-qty, .item-price, #quote-tax, #quote-currency")
-    .forEach((input) => {
+    .forEach(input => {
       input.removeEventListener("input", updateSummary);
       input.addEventListener("input", updateSummary);
       input.removeEventListener("change", updateSummary);
@@ -148,11 +155,18 @@ function addItemRow(item = null) {
 
   const row = document.createElement("div");
   row.className = "item-row";
+  row.dataset.productId = item?.productId || "";
+
   row.innerHTML = `
     <div class="form-grid-3">
       <div class="field">
         <label>Concepto</label>
-        <input class="item-name" type="text" placeholder="Nuevo concepto" value="${escapeHtml(item?.name || "")}" />
+        <input
+          class="item-name"
+          type="text"
+          placeholder="Nuevo concepto"
+          value="${escapeHtml(item?.name || "")}"
+        />
       </div>
       <div class="field">
         <label>Cantidad</label>
@@ -177,6 +191,78 @@ function addItemRow(item = null) {
 
   bindItemInputs();
   updateSummary();
+}
+
+function openProductPicker() {
+  if (!isProPlan()) {
+    showToast("Disponible en Plan Pro");
+    window.location.hash = "settings";
+    return;
+  }
+
+  if (!productsCache.length) {
+    showToast("Aún no has agregado productos en tu catálogo");
+    window.location.hash = "products";
+    return;
+  }
+
+  openModal({
+    title: `Agregar producto <span class="badge-pro">PRO</span>`,
+    content: `
+      <p class="modal-note">Selecciona un producto de tu catálogo para agregarlo a la cotización.</p>
+
+      <div class="field" style="margin-top:12px;">
+        <label for="quote-product-picker">Producto</label>
+        <select id="quote-product-picker">
+          <option value="">Selecciona un producto</option>
+          ${productsCache
+            .map(
+              product => `
+                <option value="${product.id}">
+                  ${escapeHtml(product.name || "Producto")} — ${formatCurrency(Number(product.unitPrice || 0), "MXN")}
+                  ${product.stock != null ? ` — Stock: ${Number(product.stock || 0)}` : ""}
+                </option>
+              `
+            )
+            .join("")}
+        </select>
+      </div>
+    `,
+    actions: `
+      <button class="btn btn-secondary" type="button" id="cancel-product-picker-btn">
+        Cancelar
+      </button>
+      <button class="btn btn-primary" type="button" id="confirm-product-picker-btn">
+        Agregar producto
+      </button>
+    `
+  });
+
+  $("#cancel-product-picker-btn")?.addEventListener("click", closeModal);
+
+  $("#confirm-product-picker-btn")?.addEventListener("click", () => {
+    const selectedId = $("#quote-product-picker")?.value || "";
+    if (!selectedId) {
+      showToast("Selecciona un producto");
+      return;
+    }
+
+    const product = productsCache.find(item => item.id === selectedId);
+    if (!product) {
+      showToast("No se encontró el producto");
+      return;
+    }
+
+    addItemRow({
+      productId: product.id,
+      name: product.name || "",
+      qty: 1,
+      unitPrice: Number(product.unitPrice || 0)
+    });
+
+    closeModal();
+    showToast("Producto agregado a la cotización");
+  });
 }
 
 function renderQuotePlanAlert() {
@@ -268,7 +354,7 @@ async function preloadQuoteForEdit(quoteId) {
   if (container) container.innerHTML = "";
 
   if (items.length) {
-    items.forEach((item) => addItemRow(item));
+    items.forEach(item => addItemRow(item));
   } else {
     addItemRow();
   }
@@ -289,7 +375,7 @@ function buildPdfPayload({
   taxes = 0,
   total = 0,
   currency = "MXN",
-  fallbackFolio = "COT-0001",
+  fallbackFolio = "COT-0001"
 }) {
   return {
     ...quoteBase,
@@ -320,11 +406,23 @@ function buildPdfPayload({
     warrantyText: settingsCache?.warrantyText || "",
     commercialNotes: settingsCache?.commercialNotes || "",
 
-    folio: quoteBase?.folio || fallbackFolio,
+    folio: quoteBase?.folio || fallbackFolio
   };
 }
 
 export function renderQuoteEditor() {
+  const proProductsButton = isProPlan()
+    ? `
+      <button class="btn btn-secondary" id="add-product-btn" type="button">
+        Agregar producto
+      </button>
+    `
+    : `
+      <button class="btn btn-secondary btn-disabled" id="add-product-btn" type="button">
+        Agregar producto <span class="badge-pro">PRO</span>
+      </button>
+    `;
+
   return `
     <section class="app-view glass">
       <div class="app-view-header">
@@ -404,63 +502,63 @@ export function renderQuoteEditor() {
             </div>
 
             <div id="quote-new-lead-panel" style="display:none; margin-top:16px;">
-  <div class="form-grid-2">
-    <div class="field">
-      <label for="new-lead-company">Empresa / Cliente</label>
-      <input
-        id="new-lead-company"
-        type="text"
-        placeholder="Nombre del cliente o empresa"
-      />
-    </div>
+              <div class="form-grid-2">
+                <div class="field">
+                  <label for="new-lead-company">Empresa / Cliente</label>
+                  <input
+                    id="new-lead-company"
+                    type="text"
+                    placeholder="Nombre del cliente o empresa"
+                  />
+                </div>
 
-    <div class="field">
-      <label for="new-lead-name">Contacto</label>
-      <input
-        id="new-lead-name"
-        type="text"
-        placeholder="Nombre del contacto"
-      />
-    </div>
+                <div class="field">
+                  <label for="new-lead-name">Contacto</label>
+                  <input
+                    id="new-lead-name"
+                    type="text"
+                    placeholder="Nombre del contacto"
+                  />
+                </div>
 
-    <div class="field">
-      <label for="new-lead-email">Email</label>
-      <input
-        id="new-lead-email"
-        type="email"
-        placeholder="correo@empresa.com"
-      />
-    </div>
+                <div class="field">
+                  <label for="new-lead-email">Email</label>
+                  <input
+                    id="new-lead-email"
+                    type="email"
+                    placeholder="correo@empresa.com"
+                  />
+                </div>
 
-    <div class="field">
-      <label for="new-lead-phone">Teléfono</label>
-      <input
-        id="new-lead-phone"
-        type="text"
-        placeholder="33 0000 0000"
-      />
-    </div>
+                <div class="field">
+                  <label for="new-lead-phone">Teléfono</label>
+                  <input
+                    id="new-lead-phone"
+                    type="text"
+                    placeholder="33 0000 0000"
+                  />
+                </div>
 
-    <div class="field">
-      <label for="new-lead-source">¿De dónde llegó?</label>
-      <input
-        id="new-lead-source"
-        type="text"
-        placeholder="Ej. WhatsApp, Facebook, Referido, Sitio web"
-        value="Manual"
-      />
-    </div>
+                <div class="field">
+                  <label for="new-lead-source">¿De dónde llegó?</label>
+                  <input
+                    id="new-lead-source"
+                    type="text"
+                    placeholder="Ej. WhatsApp, Facebook, Referido, Sitio web"
+                    value="Manual"
+                  />
+                </div>
 
-    <div class="field">
-      <label for="new-lead-status">Estatus</label>
-      <select id="new-lead-status">
-        <option>Nuevo</option>
-        <option>Contactado</option>
-        <option>Cotización enviada</option>
-      </select>
-    </div>
-  </div>
-</div>
+                <div class="field">
+                  <label for="new-lead-status">Estatus</label>
+                  <select id="new-lead-status">
+                    <option>Nuevo</option>
+                    <option>Contactado</option>
+                    <option>Cotización enviada</option>
+                  </select>
+                </div>
+              </div>
+            </div>
 
             <div class="card-head" style="margin-top:24px;">
               <strong>Conceptos</strong>
@@ -471,6 +569,7 @@ export function renderQuoteEditor() {
 
             <div class="btn-row mt-5">
               <button class="btn btn-secondary" id="add-item-btn" type="button">Agregar concepto</button>
+              ${proProductsButton}
             </div>
 
             <div class="app-panels-2" style="margin-top:24px;">
@@ -499,16 +598,16 @@ export function renderQuoteEditor() {
                 </div>
 
                 <div class="btn-row mt-5">
-  <button class="btn btn-primary" type="submit">
-    <span id="quote-submit-text">Guardar cotización</span>
-  </button>
-  <button class="btn btn-secondary" id="preview-pdf-btn" type="button">
-    Exportar PDF
-  </button>
-  <button class="btn btn-secondary" id="cancel-quote-btn" type="button">
-    Cancelar
-  </button>
-</div>
+                  <button class="btn btn-primary" type="submit">
+                    <span id="quote-submit-text">Guardar cotización</span>
+                  </button>
+                  <button class="btn btn-secondary" id="preview-pdf-btn" type="button">
+                    Exportar PDF
+                  </button>
+                  <button class="btn btn-secondary" id="cancel-quote-btn" type="button">
+                    Cancelar
+                  </button>
+                </div>
               </article>
             </div>
           </form>
@@ -521,6 +620,7 @@ export function renderQuoteEditor() {
 export async function initQuoteEditor() {
   const form = $("#quote-form");
   const addItemBtn = $("#add-item-btn");
+  const addProductBtn = $("#add-product-btn");
   const previewPdfBtn = $("#preview-pdf-btn");
   const cancelQuoteBtn = $("#cancel-quote-btn");
   const linkTypeSelect = $("#quote-link-type");
@@ -532,6 +632,12 @@ export async function initQuoteEditor() {
   settingsCache = await getBusinessSettings();
   leadsCache = await listBusinessCollection("leads");
   clientsCache = await listBusinessCollection("clients");
+
+  if (isProPlan()) {
+    productsCache = await listProducts();
+  } else {
+    productsCache = [];
+  }
 
   renderLeadOptions();
   renderClientOptions();
@@ -554,46 +660,46 @@ export async function initQuoteEditor() {
 
   linkTypeSelect?.addEventListener("change", updateLinkPanels);
   addItemBtn?.addEventListener("click", () => addItemRow());
+  addProductBtn?.addEventListener("click", openProductPicker);
+
   cancelQuoteBtn?.addEventListener("click", () => {
-  window.location.hash = "quotes";
-    });
+    window.location.hash = "quotes";
+  });
 
-previewPdfBtn?.addEventListener("click", async () => {
-  showToast("Preparando PDF... Recuerda activar “Gráficos en segundo plano” en Chrome o Safari.");
+  previewPdfBtn?.addEventListener("click", async () => {
+    showToast("Preparando PDF... Recuerda activar “Gráficos en segundo plano” en Chrome o Safari.");
 
-  const currency = $("#quote-currency")?.value || "MXN";
-  const taxRate = Number($("#quote-tax")?.value || 0);
-  const items = readItems();
-  const { subtotal, taxes, total } = calculateTotals(items, taxRate);
+    const currency = $("#quote-currency")?.value || "MXN";
+    const taxRate = Number($("#quote-tax")?.value || 0);
+    const items = readItems();
+    const { subtotal, taxes, total } = calculateTotals(items, taxRate);
 
-  try {
-    const currentQuote = editingQuoteId
-      ? await getQuoteById(editingQuoteId)
-      : null;
+    try {
+      const currentQuote = editingQuoteId ? await getQuoteById(editingQuoteId) : null;
 
-    const pdfPayload = buildPdfPayload({
-      quoteBase: {
-        ...(currentQuote || {}),
-        clientName: $("#quote-client")?.value || "Cliente",
-        notes: $("#quote-notes")?.value || "",
+      const pdfPayload = buildPdfPayload({
+        quoteBase: {
+          ...(currentQuote || {}),
+          clientName: $("#quote-client")?.value || "Cliente",
+          notes: $("#quote-notes")?.value || "",
+          currency
+        },
+        items,
+        subtotal,
+        taxes,
+        total,
         currency,
-      },
-      items,
-      subtotal,
-      taxes,
-      total,
-      currency,
-      fallbackFolio: currentQuote?.folio || defaults.folio,
-    });
+        fallbackFolio: currentQuote?.folio || defaults.folio
+      });
 
-    await exportQuoteToPDF(pdfPayload);
-  } catch (error) {
-    console.error(error);
-    showToast("No se pudo generar el PDF");
-  }
-});
+      await exportQuoteToPDF(pdfPayload);
+    } catch (error) {
+      console.error(error);
+      showToast("No se pudo generar el PDF");
+    }
+  });
 
-  form.addEventListener("submit", async (event) => {
+  form.addEventListener("submit", async event => {
     event.preventDefault();
 
     try {
@@ -642,13 +748,13 @@ previewPdfBtn?.addEventListener("click", async () => {
 
       if (linkType === "new-lead") {
         const newLeadPayload = {
-  company: $("#new-lead-company")?.value.trim() || "",
-  name: $("#new-lead-name")?.value.trim() || clientNameSnapshot,
-  email: $("#new-lead-email")?.value.trim() || "",
-  phone: $("#new-lead-phone")?.value.trim() || "",
-  source: $("#new-lead-source")?.value.trim() || "Manual",
-  status: $("#new-lead-status")?.value || "Nuevo",
-};
+          company: $("#new-lead-company")?.value.trim() || "",
+          name: $("#new-lead-name")?.value.trim() || clientNameSnapshot,
+          email: $("#new-lead-email")?.value.trim() || "",
+          phone: $("#new-lead-phone")?.value.trim() || "",
+          source: $("#new-lead-source")?.value.trim() || "Manual",
+          status: $("#new-lead-status")?.value || "Nuevo"
+        };
 
         const newLeadId = await createLead(newLeadPayload);
         linkedType = "lead";
@@ -685,12 +791,12 @@ previewPdfBtn?.addEventListener("click", async () => {
           total,
           status: "pending",
           notes: $("#quote-notes")?.value.trim() || "",
-          validUntil: $("#quote-validity")?.value || "",
+          validUntil: $("#quote-validity")?.value || ""
         };
 
         await createQuote({
           quoteData: quotePayload,
-          items,
+          items
         });
 
         showToast("Cotización creada correctamente");
@@ -714,9 +820,9 @@ previewPdfBtn?.addEventListener("click", async () => {
             total,
             status: existingQuote?.status || "pending",
             notes: $("#quote-notes")?.value.trim() || "",
-            validUntil: $("#quote-validity")?.value || "",
+            validUntil: $("#quote-validity")?.value || ""
           },
-          items,
+          items
         );
 
         showToast("Cotización actualizada correctamente");
