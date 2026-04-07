@@ -476,7 +476,7 @@ export function renderQuoteEditor() {
                 </select>
               </div>
 
-              <div class="field">
+              <div class="field" id="quote-tax-field">
                 <label for="quote-tax">Impuesto (%)</label>
                 <input id="quote-tax" type="number" value="16" />
               </div>
