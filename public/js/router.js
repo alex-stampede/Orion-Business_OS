@@ -76,7 +76,10 @@ let isRendering = false;
 
 function isSuperAdmin() {
   const state = getState();
-  return state.user?.role === "super_admin";
+  const role = String(state.user?.role || "").trim().toLowerCase();
+
+  // Compatibilidad: en producción el rol global existe como "super_admin".
+  return role === "super_admin" || role === "orion_super_admin";
 }
 
 function protectAdminRoute(route) {
