@@ -1,272 +1,603 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Orion Business OS | Dirige tu negocio desde un solo lugar</title>
-  <meta
-    name="description"
-    content="Orion Business OS te ayuda a cotizar, organizar leads, administrar clientes y visualizar tu operación comercial desde un solo lugar."
-  />
+import { escapeHtml, formatCurrency } from "../helpers.js";
+import { showToast, openModal, closeModal } from "../ui.js";
+import {
+  listProducts,
+  createProduct,
+  updateProduct,
+  deleteProduct,
+  getInventoryMetrics,
+  getCurrentBusinessPlan,
+  isProPlan
+} from "../firestore-service.js";
 
-  <link rel="stylesheet" href="./styles/tokens.css" />
-  <link rel="stylesheet" href="./styles/base.css" />
-  <link rel="stylesheet" href="./styles/layout.css" />
-  <link rel="stylesheet" href="./styles/components.css" />
-  <link rel="stylesheet" href="./styles/utilities.css" />
-  <link rel="stylesheet" href="./styles/pages.css" />
-</head>
-<body class="app-body">
-  <div class="bg-orbs" aria-hidden="true"></div>
+let productsCache = [];
+let filteredProducts = [];
+let inventoryMetricsCache = null;
 
-  <main class="app-shell">
-    <aside class="sidebar glass" id="sidebar">
-      <div class="sidebar-top">
-        <a href="#dashboard" class="sidebar-brand">
-          <div class="brand-mark">
-            <img
-              src="https://marketingorion.com/wp-content/uploads/2026/03/Logo-Orion-Blanco.png"
-              alt="Orion Business OS"
-            />
-          </div>
+function getProductStatus(product = {}) {
+  const stock = Number(product.stock || 0);
+  const minStock = Number(product.minStock || 0);
 
-          <div class="sidebar-brand-copy">
-            <strong id="sidebar-brand-name">Orion Business OS</strong>
-            <span id="sidebar-brand-tagline">Dirige tu negocio desde un solo lugar</span>
-          </div>
-        </a>
-      </div>
+  if (stock <= 0) {
+    return {
+      key: "out",
+      label: "Agotado"
+    };
+  }
 
-      <nav class="sidebar-nav">
-        <a class="nav-item is-active" data-route="dashboard" href="#dashboard">
-          <span class="nav-dot"></span>
-          <span>Dashboard</span>
-        </a>
+  if (stock <= minStock) {
+    return {
+      key: "low",
+      label: "Stock bajo"
+    };
+  }
 
-        <a class="nav-item" data-route="quotes" href="#quotes">
-          <span class="nav-dot"></span>
-          <span>Cotizaciones</span>
-        </a>
+  return {
+    key: "active",
+    label: "Activo"
+  };
+}
 
-        <a class="nav-item" data-route="quote-editor" href="#quote-editor">
-          <span class="nav-dot"></span>
-          <span>Nueva cotización</span>
-        </a>
+function buildProBadge() {
+  return `<span class="badge-pro">PRO</span>`;
+}
 
-        <a class="nav-item" data-route="leads" href="#leads">
-          <span class="nav-dot"></span>
-          <span>Leads</span>
-        </a>
-
-        <a class="nav-item" data-route="clients" href="#clients">
-          <span class="nav-dot"></span>
-          <span>Clientes</span>
-        </a>
-
-        <a class="nav-item" data-route="pipeline" href="#pipeline">
-          <span class="nav-dot"></span>
-          <span>Pipeline</span>
-        </a>
-
-        <a class="nav-item" data-route="settings" href="#settings">
-          <span class="nav-dot"></span>
-          <span>Configuración</span>
-        </a>
-        <a class="nav-item" data-route="orion-admin" href="#orion-admin" style="display:none;">
-  <span class="nav-dot"></span>
-  <span>Control Center</span>
-</a>
-      </nav>
-
-      <div class="sidebar-bottom">
-        <div class="sidebar-user-card glass">
-          <div class="sidebar-user-avatar" id="sidebar-avatar">OB</div>
-
-          <div class="sidebar-user-meta">
-            <strong id="sidebar-profile-name">Usuario</strong>
-            <span id="sidebar-profile-business">Negocio</span>
-          </div>
+function renderProductsLockState() {
+  return `
+    <section class="app-view glass">
+      <div class="app-view-header">
+        <div class="app-view-title">
+          <p class="eyebrow-sm">Productos e inventario</p>
+          <h2>Controla tu catálogo y stock</h2>
+          <p class="muted">
+            Organiza tus productos, lleva control de inventario y acelera tus cotizaciones.
+          </p>
         </div>
-
-        <button class="btn btn-secondary sidebar-logout" id="logout-btn" type="button">
-          Cerrar sesión
-        </button>
-        <div class="sidebar-support">
-  <div class="support-label">Soporte</div>
-  <a href="mailto:contacto@marketingorion.com" class="support-email">
-    contacto@marketingorion.com
-  </a>
-</div>
       </div>
-    </aside>
 
-    <section class="app-main">
-      <header class="app-topbar glass">
-        <div class="app-topbar-inner">
-          <div class="app-topbar-copy">
-            <div class="mobile-topbar-row">
-              <button
-                class="mobile-menu-btn btn btn-secondary btn-sm"
-                id="mobile-menu-btn"
-                type="button"
-                aria-label="Abrir menú"
-              >
-                ☰
-              </button>
+      <div class="app-view-grid">
+        <article class="app-panel plan-usage-card">
+          <div class="card-head">
+            <strong>Disponible en Plan Pro</strong>
+            <span>Inventario + catálogo</span>
+          </div>
 
-              <div class="mobile-title-wrap">
-                <p class="eyebrow-sm">Panel principal</p>
-                <h1 id="page-title">Dashboard</h1>
-              </div>
+          <p class="muted">
+            Con <strong>Plan Pro</strong> puedes registrar productos, controlar existencias,
+            detectar stock bajo y usar tu catálogo para cotizar más rápido.
+          </p>
+
+          <div class="activity-list" style="margin-top:8px;">
+            <div class="activity-item">
+              <span class="activity-dot"></span>
+              <p>Catálogo de productos centralizado</p>
+            </div>
+            <div class="activity-item">
+              <span class="activity-dot"></span>
+              <p>Alertas de stock bajo y agotado</p>
+            </div>
+            <div class="activity-item">
+              <span class="activity-dot"></span>
+              <p>Productos reutilizables en cotizaciones</p>
             </div>
           </div>
 
-          <div class="topbar-right">
-            <a href="#" class="btn btn-secondary" id="start-tour-btn">Ver recorrido</a>
-            <a href="#settings" class="btn btn-secondary" id="upgrade-plan-btn">Mejorar plan</a>
-            <a href="#quote-editor" class="btn btn-primary">Nueva cotización</a>
+          <div class="btn-row mt-5">
+            <a href="#settings" class="btn btn-primary">
+              Actualizar a Plan Pro
+            </a>
           </div>
-        </div>
-      </header>
-
-      <div id="app-content" class="app-content">
-        <section class="app-view glass">
-          <p class="muted">Cargando tu espacio de trabajo...</p>
-        </section>
+        </article>
       </div>
     </section>
-  </main>
+  `;
+}
 
-  <script type="module">
-  import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-  import { auth, db } from "./js/firebase-config.js";
-  import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-  import { setState } from "./js/state.js";
-  import { initRouter } from "./js/router.js";
-  import { updateSidebarProfile, showToast } from "./js/ui.js";
+function renderKpis() {
+  const metrics = inventoryMetricsCache || {
+    totalProducts: 0,
+    lowStockCount: 0,
+    outOfStockCount: 0,
+    inventoryValue: 0
+  };
 
-  function setupMobileSidebar() {
-    const sidebar = document.getElementById("sidebar");
-    const mobileMenuBtn = document.getElementById("mobile-menu-btn");
+  return `
+    <div class="app-kpi-grid">
+      <article class="app-kpi-card">
+        <small>Total de productos</small>
+        <strong>${metrics.totalProducts || 0}</strong>
+      </article>
 
-    const isMobile = () => window.innerWidth <= 980;
+      <article class="app-kpi-card">
+        <small>Stock bajo</small>
+        <strong>${metrics.lowStockCount || 0}</strong>
+      </article>
 
-    const toggleSidebar = () => {
-      if (!isMobile()) return;
-      sidebar?.classList.toggle("is-mobile-open");
-    };
+      <article class="app-kpi-card">
+        <small>Agotados</small>
+        <strong>${metrics.outOfStockCount || 0}</strong>
+      </article>
 
-    const closeSidebar = () => {
-      if (!isMobile()) return;
-      sidebar?.classList.remove("is-mobile-open");
-    };
+      <article class="app-kpi-card">
+        <small>Valor estimado</small>
+        <strong>${formatCurrency(metrics.inventoryValue || 0, "MXN")}</strong>
+      </article>
+    </div>
+  `;
+}
 
-    mobileMenuBtn?.addEventListener("click", event => {
-      event.preventDefault();
-      toggleSidebar();
-    });
+function renderAlerts() {
+  const lowStockProducts = productsCache.filter(p => getProductStatus(p).key === "low");
+  const outProducts = productsCache.filter(p => getProductStatus(p).key === "out");
 
-    document.querySelectorAll(".sidebar .nav-item").forEach(item => {
-      item.addEventListener("click", () => {
-        closeSidebar();
-      });
-    });
-
-    window.addEventListener("resize", () => {
-      if (!isMobile()) {
-        sidebar?.classList.remove("is-mobile-open");
-      }
-    });
+  if (!lowStockProducts.length && !outProducts.length) {
+    return `
+      <article class="app-panel">
+        <div class="card-head">
+          <strong>Alertas de inventario</strong>
+          <span>Todo en orden</span>
+        </div>
+        <p class="muted">
+          No hay productos con stock bajo ni agotados por el momento.
+        </p>
+      </article>
+    `;
   }
 
-  async function bootstrapApp(firebaseUser) {
-    const userRef = doc(db, "users", firebaseUser.uid);
-    const userSnap = await getDoc(userRef);
+  return `
+    <article class="app-panel">
+      <div class="card-head">
+        <strong>Alertas de inventario</strong>
+        <span>${lowStockProducts.length + outProducts.length} alerta(s)</span>
+      </div>
 
-    let appUser = {
-      uid: firebaseUser.uid,
-      email: firebaseUser.email || "",
-      displayName: firebaseUser.displayName || "",
-      fullName: firebaseUser.displayName || ""
-    };
+      <div class="activity-list">
+        ${outProducts
+          .map(
+            product => `
+              <div class="activity-item">
+                <span class="activity-dot"></span>
+                <p>
+                  <strong>${escapeHtml(product.name || "Producto")}</strong> está agotado.
+                </p>
+              </div>
+            `
+          )
+          .join("")}
 
-    let business = {
-      name: "Mi negocio",
-      plan: "free",
-      planName: "Plan Inicio",
-      planPrice: 0,
-      subscriptionStatus: "inactive",
-      cancelAtPeriodEnd: false
-    };
+        ${lowStockProducts
+          .map(
+            product => `
+              <div class="activity-item">
+                <span class="activity-dot"></span>
+                <p>
+                  <strong>${escapeHtml(product.name || "Producto")}</strong> tiene stock bajo
+                  (${Number(product.stock || 0)} disponible / mínimo ${Number(product.minStock || 0)}).
+                </p>
+              </div>
+            `
+          )
+          .join("")}
+      </div>
+    </article>
+  `;
+}
 
-    if (userSnap.exists()) {
-      const userData = userSnap.data();
+function applyFilters() {
+  const search = (document.getElementById("products-search")?.value || "").trim().toLowerCase();
+  const status = document.getElementById("products-filter-status")?.value || "";
 
-      appUser = {
-        uid: firebaseUser.uid,
-        email: firebaseUser.email || "",
-        displayName: firebaseUser.displayName || userData.fullName || "",
-        fullName: userData.fullName || firebaseUser.displayName || "",
-        businessId: userData.businessId || "",
-        role: userData.role || "owner"
-      };
+  filteredProducts = productsCache.filter(product => {
+    const haystack = [
+      product.name || "",
+      product.sku || "",
+      product.category || "",
+      product.description || ""
+    ]
+      .join(" ")
+      .toLowerCase();
 
-      if (userData.businessId) {
-        const businessRef = doc(db, "businesses", userData.businessId);
-        const businessSnap = await getDoc(businessRef);
+    const matchesSearch = !search || haystack.includes(search);
+    const matchesStatus = !status || getProductStatus(product).key === status;
 
-        if (businessSnap.exists()) {
-          const businessData = businessSnap.data();
+    return matchesSearch && matchesStatus;
+  });
 
-          business = {
-            id: businessSnap.id,
-            ...businessData,
-            name: businessData.name || businessData.businessName || "Mi negocio",
-            plan: businessData.plan || "free",
-            planName:
-              businessData.planName ||
-              (businessData.plan === "pro" ? "Plan Pro" : "Plan Inicio"),
-            planPrice: Number(businessData.planPrice || 0),
-            subscriptionStatus: businessData.subscriptionStatus || "inactive",
-            cancelAtPeriodEnd: Boolean(businessData.cancelAtPeriodEnd)
-          };
-        }
-      }
-    }
+  renderProductsTable();
+}
 
-    setState({
-      user: appUser,
-      business
+function renderProductsTable() {
+  const tbody = document.getElementById("products-table-body");
+  const count = document.getElementById("products-count");
+
+  if (!tbody || !count) return;
+
+  count.textContent = `${filteredProducts.length} registro(s)`;
+
+  if (!filteredProducts.length) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="8">
+          <div class="table-empty-state">
+            <h3>Aún no has agregado productos</h3>
+            <p class="muted">
+              Empieza creando tu primer producto para llevar control de inventario y cotizar más rápido.
+            </p>
+            <button class="btn btn-primary" type="button" id="empty-create-product-btn">
+              Agregar producto
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+
+    document.getElementById("empty-create-product-btn")?.addEventListener("click", () => {
+      openCreateProductModal();
     });
 
-    updateSidebarProfile(appUser, business);
-    initRouter();
-    setupMobileSidebar();
+    return;
   }
 
-  onAuthStateChanged(auth, async firebaseUser => {
-    if (!firebaseUser) {
-      window.location.href = "./login.html";
+  tbody.innerHTML = filteredProducts
+    .map(product => {
+      const status = getProductStatus(product);
+
+      return `
+        <tr>
+          <td>
+            <strong>${escapeHtml(product.name || "—")}</strong>
+            ${
+              product.description
+                ? `<div class="muted" style="margin-top:4px; font-size:12px;">${escapeHtml(product.description)}</div>`
+                : ""
+            }
+          </td>
+          <td>${escapeHtml(product.sku || "—")}</td>
+          <td>${escapeHtml(product.category || "—")}</td>
+          <td>${formatCurrency(Number(product.unitPrice || 0), "MXN")}</td>
+          <td>${Number(product.stock || 0)}</td>
+          <td>${Number(product.minStock || 0)}</td>
+          <td>
+            <span class="status-pill ${status.key === "active" ? "won" : status.key === "low" ? "pending" : "lost"}">
+              ${status.label}
+            </span>
+          </td>
+          <td>
+            <div class="btn-row">
+              <button class="btn btn-secondary btn-sm js-edit-product" data-id="${product.id}">
+                Editar
+              </button>
+              <button class="btn btn-secondary btn-sm js-delete-product" data-id="${product.id}">
+                Eliminar
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  bindTableActions();
+}
+
+function bindTableActions() {
+  document.querySelectorAll(".js-edit-product").forEach(btn => {
+    btn.onclick = () => {
+      const product = productsCache.find(p => p.id === btn.dataset.id);
+      if (!product) return;
+      openEditProductModal(product);
+    };
+  });
+
+  document.querySelectorAll(".js-delete-product").forEach(btn => {
+    btn.onclick = async () => {
+      const product = productsCache.find(p => p.id === btn.dataset.id);
+      if (!product) return;
+
+      const confirmed = window.confirm(
+        `¿Eliminar el producto "${product.name || "Sin nombre"}"?`
+      );
+
+      if (!confirmed) return;
+
+      try {
+        await deleteProduct(product.id, product.name || "");
+        showToast("Producto eliminado correctamente");
+        await loadProducts();
+      } catch (error) {
+        console.error(error);
+        showToast("No se pudo eliminar el producto");
+      }
+    };
+  });
+}
+
+function productFormMarkup(product = {}) {
+  return `
+    <div class="modal-grid-2">
+      <div class="field">
+        <label>Producto</label>
+        <input
+          id="product-name"
+          type="text"
+          placeholder="Nombre del producto"
+          value="${escapeHtml(product.name || "")}"
+        />
+      </div>
+
+      <div class="field">
+        <label>SKU</label>
+        <input
+          id="product-sku"
+          type="text"
+          placeholder="Ej. SKU-001"
+          value="${escapeHtml(product.sku || "")}"
+        />
+      </div>
+
+      <div class="field">
+        <label>Categoría</label>
+        <input
+          id="product-category"
+          type="text"
+          placeholder="Ej. Herramientas, Refacciones, Servicios"
+          value="${escapeHtml(product.category || "")}"
+        />
+      </div>
+
+      <div class="field">
+        <label>Precio unitario</label>
+        <input
+          id="product-unit-price"
+          type="number"
+          min="0"
+          step="0.01"
+          placeholder="0.00"
+          value="${Number(product.unitPrice || 0)}"
+        />
+      </div>
+
+      <div class="field">
+        <label>Stock actual</label>
+        <input
+          id="product-stock"
+          type="number"
+          min="0"
+          step="1"
+          placeholder="0"
+          value="${Number(product.stock || 0)}"
+        />
+      </div>
+
+      <div class="field">
+        <label>Stock mínimo</label>
+        <input
+          id="product-min-stock"
+          type="number"
+          min="0"
+          step="1"
+          placeholder="0"
+          value="${Number(product.minStock || 0)}"
+        />
+      </div>
+    </div>
+
+    <div class="field" style="margin-top:16px;">
+      <label>Descripción</label>
+      <textarea
+        id="product-description"
+        rows="4"
+        placeholder="Descripción breve del producto"
+      >${escapeHtml(product.description || "")}</textarea>
+    </div>
+  `;
+}
+
+function getProductFormPayload() {
+  return {
+    name: document.getElementById("product-name")?.value.trim() || "",
+    sku: document.getElementById("product-sku")?.value.trim() || "",
+    category: document.getElementById("product-category")?.value.trim() || "",
+    description: document.getElementById("product-description")?.value.trim() || "",
+    unitPrice: Number(document.getElementById("product-unit-price")?.value || 0),
+    stock: Number(document.getElementById("product-stock")?.value || 0),
+    minStock: Number(document.getElementById("product-min-stock")?.value || 0)
+  };
+}
+
+function openCreateProductModal() {
+  openModal({
+    title: `Agregar producto ${buildProBadge()}`,
+    content: productFormMarkup(),
+    actions: `
+      <button class="btn btn-secondary" type="button" id="cancel-product-modal-btn">
+        Cancelar
+      </button>
+      <button class="btn btn-primary" type="button" id="save-product-modal-btn">
+        Guardar producto
+      </button>
+    `
+  });
+
+  document.getElementById("cancel-product-modal-btn")?.addEventListener("click", closeModal);
+
+  document.getElementById("save-product-modal-btn")?.addEventListener("click", async () => {
+    const payload = getProductFormPayload();
+
+    if (!payload.name) {
+      showToast("Escribe el nombre del producto");
       return;
     }
 
     try {
-      await bootstrapApp(firebaseUser);
+      await createProduct(payload);
+      closeModal();
+      showToast("Producto creado correctamente");
+      await loadProducts();
     } catch (error) {
-      console.error("Error al inicializar la app:", error);
-      showToast("No se pudo cargar la aplicación");
+      console.error(error);
+      showToast("No se pudo crear el producto");
     }
+  });
+}
+
+function openEditProductModal(product = {}) {
+  openModal({
+    title: `Editar producto ${buildProBadge()}`,
+    content: productFormMarkup(product),
+    actions: `
+      <button class="btn btn-secondary" type="button" id="cancel-product-modal-btn">
+        Cancelar
+      </button>
+      <button class="btn btn-primary" type="button" id="update-product-modal-btn">
+        Guardar cambios
+      </button>
+    `
   });
 
-  document.getElementById("logout-btn")?.addEventListener("click", async () => {
+  document.getElementById("cancel-product-modal-btn")?.addEventListener("click", closeModal);
+
+  document.getElementById("update-product-modal-btn")?.addEventListener("click", async () => {
+    const payload = getProductFormPayload();
+
+    if (!payload.name) {
+      showToast("Escribe el nombre del producto");
+      return;
+    }
+
     try {
-      await signOut(auth);
-      window.location.href = "./login.html";
+      await updateProduct(product.id, payload);
+      closeModal();
+      showToast("Producto actualizado correctamente");
+      await loadProducts();
     } catch (error) {
-      console.error("Error al cerrar sesión:", error);
-      showToast("No se pudo cerrar sesión");
+      console.error(error);
+      showToast("No se pudo actualizar el producto");
     }
   });
-</script>
-</body>
-</html>
+}
+
+async function loadProducts() {
+  try {
+    const [products, metrics] = await Promise.all([
+      listProducts(),
+      getInventoryMetrics()
+    ]);
+
+    productsCache = Array.isArray(products) ? products : [];
+    filteredProducts = [...productsCache];
+    inventoryMetricsCache = metrics || null;
+
+    const kpiBox = document.getElementById("products-kpis");
+    const alertsBox = document.getElementById("products-alerts");
+
+    if (kpiBox) kpiBox.innerHTML = renderKpis();
+    if (alertsBox) alertsBox.innerHTML = renderAlerts();
+
+    renderProductsTable();
+  } catch (error) {
+    console.error("ERROR AL CARGAR PRODUCTOS:", error);
+    showToast("No se pudo cargar el módulo de productos");
+  }
+}
+
+export function renderProducts() {
+  const plan = getCurrentBusinessPlan();
+
+  if (!isProPlan()) {
+    return renderProductsLockState();
+  }
+
+  return `
+    <section class="app-view glass">
+      <div class="app-view-header">
+        <div class="app-view-title">
+          <p class="eyebrow-sm">Productos e inventario</p>
+          <h2>Control de catálogo y stock</h2>
+          <p class="muted">
+            Lleva registro de tus productos, detecta inventario bajo y prepara tu negocio para cotizar más rápido.
+          </p>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" type="button" id="create-product-btn">
+            Agregar producto
+          </button>
+        </div>
+      </div>
+
+      <div class="app-view-grid">
+        <div id="products-kpis">
+          ${renderKpis()}
+        </div>
+
+        <div id="products-alerts">
+          ${renderAlerts()}
+        </div>
+
+        <article class="app-panel">
+          <div class="form-grid-2 mb-4">
+            <div class="field">
+              <label>Buscar</label>
+              <input
+                id="products-search"
+                type="text"
+                placeholder="Producto, SKU o categoría"
+              />
+            </div>
+
+            <div class="field">
+              <label>Estatus</label>
+              <select id="products-filter-status">
+                <option value="">Todos</option>
+                <option value="active">Activo</option>
+                <option value="low">Stock bajo</option>
+                <option value="out">Agotado</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="card-head">
+            <strong>Listado de productos</strong>
+            <span id="products-count">Cargando...</span>
+          </div>
+
+          <div class="table-shell">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th>SKU</th>
+                  <th>Categoría</th>
+                  <th>Precio</th>
+                  <th>Stock</th>
+                  <th>Mínimo</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="products-table-body">
+                <tr>
+                  <td colspan="8">Cargando productos...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+      </div>
+    </section>
+  `;
+}
+
+export function initProducts() {
+  if (!isProPlan()) return;
+
+  loadProducts();
+
+  document.getElementById("create-product-btn")?.addEventListener("click", () => {
+    openCreateProductModal();
+  });
+
+  document.getElementById("products-search")?.addEventListener("input", applyFilters);
+  document.getElementById("products-filter-status")?.addEventListener("change", applyFilters);
+}
