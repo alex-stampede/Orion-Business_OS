@@ -492,7 +492,7 @@ export function renderQuoteEditor() {
                 <label for="quote-link-type">¿Cómo quieres vincularla?</label>
                 <select id="quote-link-type">
                   <option value="none">Sin vincular</option>
-                  <option value="lead">Lead existente</option>
+                  <option value="lead">Prospecto existente</option>
                   <option value="client">Cliente existente</option>
                   <option value="new-lead">Crear nuevo lead</option>
                 </select>
@@ -501,7 +501,7 @@ export function renderQuoteEditor() {
 
             <div id="quote-link-lead-panel" style="display:none; margin-top:16px;">
               <div class="field">
-                <label for="quote-existing-lead">Selecciona un lead</label>
+                <label for="quote-existing-lead">Selecciona un prospecto</label>
                 <select id="quote-existing-lead"></select>
               </div>
             </div>
