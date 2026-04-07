@@ -46,6 +46,15 @@ function calculateTotals(items, taxRate = 16) {
   return { subtotal, taxes, total };
 }
 
+function isTaxEnabled() {
+  return Boolean(settingsCache?.taxEnabled);
+}
+
+function getEffectiveTaxRate(rawTaxRate = 0) {
+  if (!isTaxEnabled()) return 0;
+  return Number(rawTaxRate || 0);
+}
+
 function getSelectedLinkData() {
   const linkType = $("#quote-link-type")?.value || "none";
   const existingLeadId = $("#quote-existing-lead")?.value || "";
@@ -123,7 +132,7 @@ function readItems() {
 }
 
 function updateSummary() {
-  const taxRate = Number($("#quote-tax")?.value || 0);
+  const taxRate = getEffectiveTaxRate(Number($("#quote-tax")?.value || 0));
   const currency = $("#quote-currency")?.value || "MXN";
   const items = readItems();
   const { subtotal, taxes, total } = calculateTotals(items, taxRate);
@@ -133,7 +142,7 @@ function updateSummary() {
 
   summary.innerHTML = `
     <div class="activity-item"><span class="activity-dot"></span><p>Subtotal estimado: <strong>${formatCurrency(subtotal, currency)}</strong></p></div>
-    <div class="activity-item"><span class="activity-dot"></span><p>Impuestos: <strong>${formatCurrency(taxes, currency)}</strong></p></div>
+    <div class="activity-item"><span class="activity-dot"></span><p>Impuestos: <strong>${formatCurrency(taxes, currency)}</strong>${isTaxEnabled() ? "" : " <em>(desactivados)</em>"}</p></div>
     <div class="activity-item"><span class="activity-dot"></span><p>Total: <strong>${formatCurrency(total, currency)}</strong></p></div>
   `;
 }
@@ -327,7 +336,9 @@ async function preloadQuoteForEdit(quoteId) {
   $("#quote-client").value = quote.clientNameSnapshot || "";
   $("#quote-validity").value = quote.validUntil || "";
   $("#quote-currency").value = quote.currency || "MXN";
-  $("#quote-tax").value = quote.taxRate || 16;
+  $("#quote-tax").value = quote.taxRate ?? 16;
+  if (!isTaxEnabled()) $("#quote-tax").value = 0;
+  $("#quote-tax").disabled = !isTaxEnabled();
   $("#quote-notes").value = quote.notes || "";
 
   $("#quote-link-type").value =
@@ -384,6 +395,7 @@ function buildPdfPayload({
     taxes,
     total,
     currency,
+    taxEnabled: isTaxEnabled(),
 
     businessName: settingsCache?.businessName || "Mi Negocio",
     logoUrl: settingsCache?.logoUrl || "",
@@ -644,7 +656,8 @@ export async function initQuoteEditor() {
 
   const defaults = await getNextQuoteFolio();
   $("#quote-currency").value = defaults.currency || "MXN";
-  $("#quote-tax").value = defaults.taxRate || 16;
+  $("#quote-tax").value = defaults.taxEnabled ? (defaults.taxRate ?? 16) : 0;
+  $("#quote-tax").disabled = !defaults.taxEnabled;
 
   if (!document.querySelector(".item-row")) {
     addItemRow();
@@ -670,7 +683,7 @@ export async function initQuoteEditor() {
     showToast("Preparando PDF... Recuerda activar “Gráficos en segundo plano” en Chrome o Safari.");
 
     const currency = $("#quote-currency")?.value || "MXN";
-    const taxRate = Number($("#quote-tax")?.value || 0);
+    const taxRate = getEffectiveTaxRate(Number($("#quote-tax")?.value || 0));
     const items = readItems();
     const { subtotal, taxes, total } = calculateTotals(items, taxRate);
 
@@ -710,7 +723,7 @@ export async function initQuoteEditor() {
       }
 
       const currency = $("#quote-currency")?.value || "MXN";
-      const taxRate = Number($("#quote-tax")?.value || 16);
+      const taxRate = getEffectiveTaxRate(Number($("#quote-tax")?.value || 16));
       const { subtotal, taxes, total } = calculateTotals(items, taxRate);
 
       let linkedType = null;
@@ -785,6 +798,7 @@ export async function initQuoteEditor() {
           emailSnapshot,
           phoneSnapshot,
           currency,
+          taxEnabled: isTaxEnabled(),
           taxRate,
           subtotal,
           taxes,
@@ -814,6 +828,7 @@ export async function initQuoteEditor() {
             emailSnapshot,
             phoneSnapshot,
             currency,
+            taxEnabled: isTaxEnabled(),
             taxRate,
             subtotal,
             taxes,
