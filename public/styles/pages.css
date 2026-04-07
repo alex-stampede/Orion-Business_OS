@@ -1830,3 +1830,11 @@ button:disabled.btn-disabled {
     border-radius: 18px;
   }
 }
+.sidebar-nav .nav-item,
+.sidebar-nav .nav-item-pro {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 10px;
+  text-align: left;
+}
