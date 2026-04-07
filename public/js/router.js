@@ -8,6 +8,7 @@ import { renderQuoteEditor, initQuoteEditor } from "./modules/quote-editor.js";
 import { renderClients, initClients } from "./modules/clients.js";
 import { renderLeads, initLeads } from "./modules/leads.js";
 import { renderPipeline, initPipeline } from "./modules/pipeline.js";
+import { renderProducts, initProducts } from "./modules/products.js";
 import { renderSettings, initSettings } from "./modules/settings.js";
 
 /* NUEVO */
@@ -49,6 +50,12 @@ const routes = {
     title: "Pipeline",
     render: renderPipeline,
     init: initPipeline
+  },
+
+  products: {
+    title: "Productos e inventario",
+    render: renderProducts,
+    init: initProducts
   },
 
   settings: {
