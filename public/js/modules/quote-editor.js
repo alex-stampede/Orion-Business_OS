@@ -229,7 +229,16 @@ function openProductPicker() {
               product => `
                 <option value="${product.id}">
                   ${escapeHtml(product.name || "Producto")} — ${formatCurrency(Number(product.unitPrice || 0), "MXN")}
-                  ${product.stock != null ? ` — Stock: ${Number(product.stock || 0)}` : ""}
+                  ${
+                    product.stock != null
+                      ? ` — Stock libre: ${Number(product.availableStock != null ? product.availableStock : product.stock || 0)}`
+                      : ""
+                  }
+                  ${
+                    product.quotedStock
+                      ? ` — Cotizado: ${Number(product.quotedStock || 0)}`
+                      : ""
+                  }
                 </option>
               `
             )

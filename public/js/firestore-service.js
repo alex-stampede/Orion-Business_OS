@@ -422,12 +422,49 @@ export async function deleteClient(clientId, clientName = "") {
 ========================= */
 
 export function getProductStatus(product = {}) {
-  const stock = Number(product.stock || 0);
+  const stock = Number(
+    product.availableStock != null ? product.availableStock : product.stock || 0
+  );
   const minStock = Number(product.minStock || 0);
 
   if (stock <= 0) return "out";
   if (stock <= minStock) return "low";
   return "active";
+}
+
+const ACTIVE_QUOTE_STATUSES = new Set(["draft", "sent", "pending", "negotiating"]);
+
+function normalizeItemQty(item = {}) {
+  const qty = Number(item.qty || 0);
+  return Number.isFinite(qty) && qty > 0 ? qty : 0;
+}
+
+async function getQuotedStockByProductMap() {
+  const quotes = await listBusinessCollection("quotes");
+  const activeQuotes = quotes.filter(quote =>
+    ACTIVE_QUOTE_STATUSES.has(String(quote.status || "pending"))
+  );
+
+  if (!activeQuotes.length) {
+    return new Map();
+  }
+
+  const quotedStockMap = new Map();
+
+  for (const quote of activeQuotes) {
+    const items = await getQuoteItems(quote.id);
+
+    items.forEach(item => {
+      const productId = item.productId || "";
+      const qty = normalizeItemQty(item);
+      if (!productId || qty <= 0) return;
+
+      const current = quotedStockMap.get(productId) || 0;
+      quotedStockMap.set(productId, current + qty);
+    });
+  }
+
+  return quotedStockMap;
 }
 
 export function getProductStatusLabel(status = "active") {
@@ -439,11 +476,25 @@ export function getProductStatusLabel(status = "active") {
 }
 
 export async function listProducts() {
-  const products = await listBusinessCollection("products");
+  const [products, quotedStockMap] = await Promise.all([
+    listBusinessCollection("products"),
+    getQuotedStockByProductMap()
+  ]);
 
   return products.map(product => ({
     ...product,
-    status: getProductStatus(product)
+    quotedStock: Number(quotedStockMap.get(product.id) || 0),
+    availableStock: Math.max(
+      0,
+      Number(product.stock || 0) - Number(quotedStockMap.get(product.id) || 0)
+    ),
+    status: getProductStatus({
+      ...product,
+      availableStock: Math.max(
+        0,
+        Number(product.stock || 0) - Number(quotedStockMap.get(product.id) || 0)
+      )
+    })
   }));
 }
 
@@ -452,9 +503,18 @@ export async function getProductById(productId) {
 
   if (!product) return null;
 
+  const quotedStockMap = await getQuotedStockByProductMap();
+  const quotedStock = Number(quotedStockMap.get(productId) || 0);
+  const availableStock = Math.max(0, Number(product.stock || 0) - quotedStock);
+
   return {
     ...product,
-    status: getProductStatus(product)
+    quotedStock,
+    availableStock,
+    status: getProductStatus({
+      ...product,
+      availableStock
+    })
   };
 }
 
@@ -527,15 +587,30 @@ export async function getInventoryMetrics() {
 
   const inventoryValue = products.reduce((acc, product) => {
     const unitPrice = Number(product.unitPrice || 0);
-    const stock = Number(product.stock || 0);
+    const stock = Number(
+      product.availableStock != null ? product.availableStock : product.stock || 0
+    );
     return acc + unitPrice * stock;
   }, 0);
+
+  const totalQuotedStock = products.reduce(
+    (acc, product) => acc + Number(product.quotedStock || 0),
+    0
+  );
+
+  const totalAvailableStock = products.reduce(
+    (acc, product) =>
+      acc + Number(product.availableStock != null ? product.availableStock : product.stock || 0),
+    0
+  );
 
   return {
     totalProducts,
     lowStockCount,
     outOfStockCount,
-    inventoryValue
+    inventoryValue,
+    totalQuotedStock,
+    totalAvailableStock
   };
 }
 
@@ -822,6 +897,8 @@ export async function deleteQuote(quoteId, folio = "") {
 }
 
 export async function updateQuoteStatus(quoteId, status) {
+  const previousQuote = await getQuoteById(quoteId);
+
   await updateBusinessDoc("quotes", quoteId, { status });
 
   await addActivity(
@@ -831,6 +908,50 @@ export async function updateQuoteStatus(quoteId, status) {
   );
 
   const quote = await getQuoteById(quoteId);
+
+  if (quote && previousQuote?.status !== "won" && status === "won") {
+    const businessId = getBusinessId();
+    const items = await getQuoteItems(quoteId);
+    const soldByProduct = new Map();
+
+    items.forEach(item => {
+      const productId = item.productId || "";
+      const qty = normalizeItemQty(item);
+      if (!productId || qty <= 0) return;
+      soldByProduct.set(productId, (soldByProduct.get(productId) || 0) + qty);
+    });
+
+    if (soldByProduct.size) {
+      const batch = writeBatch(db);
+      const productDocs = await Promise.all(
+        Array.from(soldByProduct.keys()).map(async productId => {
+          const ref = doc(db, "businesses", businessId, "products", productId);
+          const snap = await getDoc(ref);
+          return { ref, productId, snap };
+        })
+      );
+
+      productDocs.forEach(({ ref, productId, snap }) => {
+        if (!snap.exists()) return;
+
+        const product = snap.data();
+        const soldQty = Number(soldByProduct.get(productId) || 0);
+        const currentStock = Number(product.stock || 0);
+        const nextStock = Math.max(0, currentStock - soldQty);
+
+        batch.update(ref, {
+          stock: nextStock,
+          status: getProductStatus({
+            ...product,
+            stock: nextStock
+          }),
+          ...buildUpdateTimestampPayload()
+        });
+      });
+
+      await batch.commit();
+    }
+  }
 
   if (quote && status === "won" && quote.linkedType === "lead" && quote.linkedId) {
     const lead = await getBusinessDocById("leads", quote.linkedId);
