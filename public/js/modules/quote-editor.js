@@ -55,21 +55,6 @@ function getEffectiveTaxRate(rawTaxRate = 0) {
   return Number(rawTaxRate || 0);
 }
 
-function syncTaxUI() {
-  const taxField = $("#quote-tax-field");
-  const taxInput = $("#quote-tax");
-  const enabled = isTaxEnabled();
-
-  if (taxField) {
-    taxField.style.display = enabled ? "block" : "none";
-  }
-
-  if (taxInput) {
-    taxInput.disabled = !enabled;
-    if (!enabled) taxInput.value = "0";
-  }
-}
-
 function getSelectedLinkData() {
   const linkType = $("#quote-link-type")?.value || "none";
   const existingLeadId = $("#quote-existing-lead")?.value || "";
@@ -157,11 +142,7 @@ function updateSummary() {
 
   summary.innerHTML = `
     <div class="activity-item"><span class="activity-dot"></span><p>Subtotal estimado: <strong>${formatCurrency(subtotal, currency)}</strong></p></div>
-    ${
-      isTaxEnabled()
-        ? `<div class="activity-item"><span class="activity-dot"></span><p>Impuestos: <strong>${formatCurrency(taxes, currency)}</strong></p></div>`
-        : ""
-    }
+    <div class="activity-item"><span class="activity-dot"></span><p>Impuestos: <strong>${formatCurrency(taxes, currency)}</strong>${isTaxEnabled() ? "" : " <em>(desactivados)</em>"}</p></div>
     <div class="activity-item"><span class="activity-dot"></span><p>Total: <strong>${formatCurrency(total, currency)}</strong></p></div>
   `;
 }
@@ -356,7 +337,8 @@ async function preloadQuoteForEdit(quoteId) {
   $("#quote-validity").value = quote.validUntil || "";
   $("#quote-currency").value = quote.currency || "MXN";
   $("#quote-tax").value = quote.taxRate ?? 16;
-  syncTaxUI();
+  if (!isTaxEnabled()) $("#quote-tax").value = 0;
+  $("#quote-tax").disabled = !isTaxEnabled();
   $("#quote-notes").value = quote.notes || "";
 
   $("#quote-link-type").value =
@@ -675,7 +657,7 @@ export async function initQuoteEditor() {
   const defaults = await getNextQuoteFolio();
   $("#quote-currency").value = defaults.currency || "MXN";
   $("#quote-tax").value = defaults.taxEnabled ? (defaults.taxRate ?? 16) : 0;
-  syncTaxUI();
+  $("#quote-tax").disabled = !defaults.taxEnabled;
 
   if (!document.querySelector(".item-row")) {
     addItemRow();

@@ -310,9 +310,6 @@ export function renderSettings(state = {}) {
                   <input id="tax-enabled" type="checkbox" />
                   Activar impuestos automáticos
                 </label>
-                <p class="muted" style="margin-top:8px;">
-                  Al activar esta casilla podrás definir el porcentaje de impuestos que se agregará automáticamente a los productos en cada cotización.
-                </p>
               </div>
 
               <div class="field">
