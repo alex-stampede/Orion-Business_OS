@@ -76,10 +76,10 @@ let isRendering = false;
 
 function isSuperAdmin() {
   const state = getState();
-  const role = String(state.user?.role || "").trim().toLowerCase();
+   const role = String(state.user?.role || "").trim().toLowerCase();
 
-  // Compatibilidad: en producción el rol global existe como "super_admin".
-  return role === "super_admin" || role === "orion_super_admin";
+  // El Control Center solo debe habilitarse para el rol global de Orion.
+  return role === "super_admin";
 }
 
 function protectAdminRoute(route) {
