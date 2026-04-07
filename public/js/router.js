@@ -41,7 +41,7 @@ const routes = {
   },
 
   leads: {
-    title: "Leads",
+    title: "Prospectos",
     render: renderLeads,
     init: initLeads
   },
@@ -76,7 +76,10 @@ let isRendering = false;
 
 function isSuperAdmin() {
   const state = getState();
-  return state.user?.role === "super_admin";
+  const role = String(state.user?.role || "").trim().toLowerCase();
+
+  // Compatibilidad: en producción el rol global existe como "super_admin".
+  return role === "super_admin" || role === "orion_super_admin";
 }
 
 function protectAdminRoute(route) {
@@ -90,7 +93,15 @@ function updateAdminNavVisibility() {
   const adminNav = document.querySelector('[data-route="orion-admin"]');
   if (!adminNav) return;
 
-  adminNav.style.display = isSuperAdmin() ? "" : "none";
+  if (isSuperAdmin()) {
+    adminNav.style.removeProperty("display");
+    adminNav.hidden = false;
+    return;
+  }
+
+  // Fuerza ocultar incluso cuando existen reglas CSS con `display: flex !important`.
+  adminNav.style.setProperty("display", "none", "important");
+  adminNav.hidden = true;
 }
 
 export async function renderCurrentRoute() {

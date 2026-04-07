@@ -180,7 +180,7 @@ Cancelar
 </button>
 
 <button class="btn btn-primary" type="submit" form="lead-modal-form">
-${isEdit ? "Guardar cambios" : "Crear lead"}
+${isEdit ? "Guardar cambios" : "Crear prospecto"}
 </button>
 `
   });
@@ -195,7 +195,7 @@ ${isEdit ? "Guardar cambios" : "Crear lead"}
     try {
       if (isEdit) {
         await updateLead(lead.id, data);
-        showToast("Lead actualizado");
+        showToast("Prospecto actualizado");
       } else {
         const permission = await canCreateEntity("leads");
 
@@ -206,14 +206,14 @@ ${isEdit ? "Guardar cambios" : "Crear lead"}
         }
 
         await createLead(data);
-        showToast("Lead creado");
+        showToast("Prospecto creado");
       }
 
       closeModal();
       await loadLeads();
     } catch (error) {
       console.error(error);
-      showToast("Error guardando lead");
+      showToast("Error guardando prospecto");
     }
   });
 }
@@ -334,7 +334,7 @@ function bindLeadActions() {
   document.querySelectorAll(".js-delete-lead").forEach((btn) => {
     btn.onclick = async () => {
       if (!canDeleteInCurrentPlan()) {
-        showToast("Eliminar leads está disponible en Plan Pro");
+        showToast("Eliminar prospectos está disponible en Plan Pro");
         window.location.hash = "settings";
         return;
       }
@@ -368,7 +368,7 @@ export function renderLeads() {
 
 <div class="app-view-title">
 
-<p class="eyebrow-sm">Leads</p>
+<p class="eyebrow-sm">Prospectos</p>
 
 <h2>Prospectos y oportunidades iniciales</h2>
 

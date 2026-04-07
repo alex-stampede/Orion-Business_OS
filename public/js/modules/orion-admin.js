@@ -24,7 +24,7 @@ function renderMetrics(metrics = {}) {
       ${metricCard("Usuarios Pro", metrics.totalProBusinesses || 0)}
       ${metricCard("Usuarios Free", metrics.totalFreeBusinesses || 0)}
       ${metricCard("Cotizaciones creadas", metrics.totalQuotes || 0)}
-      ${metricCard("Leads creados", metrics.totalLeads || 0)}
+      ${metricCard("Prospectos creados", metrics.totalLeads || 0)}
       ${metricCard("Clientes creados", metrics.totalClients || 0)}
       ${metricCard("Monto total cotizado", formatCurrency(metrics.totalQuotedAmount || 0, currency))}
       ${metricCard("Monto total ganado", formatCurrency(metrics.totalWonAmount || 0, currency))}

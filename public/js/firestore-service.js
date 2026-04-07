@@ -363,7 +363,7 @@ export async function createLead(data) {
   const id = await createBusinessDoc("leads", data);
   await addActivity(
     "lead_created",
-    `Se creó el lead "${data.name || "Sin nombre"}".`,
+    `Se creó el prospecto "${data.name || "Sin nombre"}".`,
     {
       leadId: id,
       name: data.name || ""
@@ -374,14 +374,14 @@ export async function createLead(data) {
 
 export async function updateLead(leadId, data) {
   await updateBusinessDoc("leads", leadId, data);
-  await addActivity("lead_updated", "Se actualizó un lead.", { leadId });
+  await addActivity("lead_updated", "Se actualizó un prospecto.", { leadId });
 }
 
 export async function deleteLead(leadId, leadName = "") {
   await removeBusinessDoc("leads", leadId);
   await addActivity(
     "lead_deleted",
-    `Se eliminó el lead "${leadName || "Sin nombre"}".`,
+    `Se eliminó el prospecto "${leadName || "Sin nombre"}".`,
     { leadId }
   );
 }
@@ -422,12 +422,49 @@ export async function deleteClient(clientId, clientName = "") {
 ========================= */
 
 export function getProductStatus(product = {}) {
-  const stock = Number(product.stock || 0);
+  const stock = Number(
+    product.availableStock != null ? product.availableStock : product.stock || 0
+  );
   const minStock = Number(product.minStock || 0);
 
   if (stock <= 0) return "out";
   if (stock <= minStock) return "low";
   return "active";
+}
+
+const ACTIVE_QUOTE_STATUSES = new Set(["draft", "sent", "pending", "negotiating"]);
+
+function normalizeItemQty(item = {}) {
+  const qty = Number(item.qty || 0);
+  return Number.isFinite(qty) && qty > 0 ? qty : 0;
+}
+
+async function getQuotedStockByProductMap() {
+  const quotes = await listBusinessCollection("quotes");
+  const activeQuotes = quotes.filter(quote =>
+    ACTIVE_QUOTE_STATUSES.has(String(quote.status || "pending"))
+  );
+
+  if (!activeQuotes.length) {
+    return new Map();
+  }
+
+  const quotedStockMap = new Map();
+
+  for (const quote of activeQuotes) {
+    const items = await getQuoteItems(quote.id);
+
+    items.forEach(item => {
+      const productId = item.productId || "";
+      const qty = normalizeItemQty(item);
+      if (!productId || qty <= 0) return;
+
+      const current = quotedStockMap.get(productId) || 0;
+      quotedStockMap.set(productId, current + qty);
+    });
+  }
+
+  return quotedStockMap;
 }
 
 export function getProductStatusLabel(status = "active") {
@@ -439,11 +476,25 @@ export function getProductStatusLabel(status = "active") {
 }
 
 export async function listProducts() {
-  const products = await listBusinessCollection("products");
+  const [products, quotedStockMap] = await Promise.all([
+    listBusinessCollection("products"),
+    getQuotedStockByProductMap()
+  ]);
 
   return products.map(product => ({
     ...product,
-    status: getProductStatus(product)
+    quotedStock: Number(quotedStockMap.get(product.id) || 0),
+    availableStock: Math.max(
+      0,
+      Number(product.stock || 0) - Number(quotedStockMap.get(product.id) || 0)
+    ),
+    status: getProductStatus({
+      ...product,
+      availableStock: Math.max(
+        0,
+        Number(product.stock || 0) - Number(quotedStockMap.get(product.id) || 0)
+      )
+    })
   }));
 }
 
@@ -452,9 +503,18 @@ export async function getProductById(productId) {
 
   if (!product) return null;
 
+  const quotedStockMap = await getQuotedStockByProductMap();
+  const quotedStock = Number(quotedStockMap.get(productId) || 0);
+  const availableStock = Math.max(0, Number(product.stock || 0) - quotedStock);
+
   return {
     ...product,
-    status: getProductStatus(product)
+    quotedStock,
+    availableStock,
+    status: getProductStatus({
+      ...product,
+      availableStock
+    })
   };
 }
 
@@ -505,6 +565,38 @@ export async function updateProduct(productId, data) {
   );
 }
 
+export async function addProductStock(productId, units = 0) {
+  const amount = Number(units || 0);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error("La cantidad a agregar debe ser mayor a 0.");
+  }
+
+  const product = await getBusinessDocById("products", productId);
+  if (!product) {
+    throw new Error("No se encontró el producto.");
+  }
+
+  const nextStock = Number(product.stock || 0) + amount;
+
+  await updateBusinessDoc("products", productId, {
+    stock: nextStock,
+    status: getProductStatus({
+      ...product,
+      stock: nextStock
+    })
+  });
+
+  await addActivity(
+    "product_stock_added",
+    `Se agregaron ${amount} unidades al producto "${product.name || productId}".`,
+    {
+      productId,
+      amount,
+      nextStock
+    }
+  );
+}
+
 export async function deleteProduct(productId, productName = "") {
   await removeBusinessDoc("products", productId);
 
@@ -527,15 +619,30 @@ export async function getInventoryMetrics() {
 
   const inventoryValue = products.reduce((acc, product) => {
     const unitPrice = Number(product.unitPrice || 0);
-    const stock = Number(product.stock || 0);
+    const stock = Number(
+      product.availableStock != null ? product.availableStock : product.stock || 0
+    );
     return acc + unitPrice * stock;
   }, 0);
+
+  const totalQuotedStock = products.reduce(
+    (acc, product) => acc + Number(product.quotedStock || 0),
+    0
+  );
+
+  const totalAvailableStock = products.reduce(
+    (acc, product) =>
+      acc + Number(product.availableStock != null ? product.availableStock : product.stock || 0),
+    0
+  );
 
   return {
     totalProducts,
     lowStockCount,
     outOfStockCount,
-    inventoryValue
+    inventoryValue,
+    totalQuotedStock,
+    totalAvailableStock
   };
 }
 
@@ -635,7 +742,7 @@ export async function convertLeadToClient(leadId, leadData, quoteId = null) {
 
   await addActivity(
     "lead_converted",
-    `El lead "${leadData.name || "Sin nombre"}" se convirtió en cliente.`,
+    `El prospecto "${leadData.name || "Sin nombre"}" se convirtió en cliente.`,
     {
       leadId,
       clientId: newClientRef.id,
@@ -822,6 +929,8 @@ export async function deleteQuote(quoteId, folio = "") {
 }
 
 export async function updateQuoteStatus(quoteId, status) {
+  const previousQuote = await getQuoteById(quoteId);
+
   await updateBusinessDoc("quotes", quoteId, { status });
 
   await addActivity(
@@ -831,6 +940,50 @@ export async function updateQuoteStatus(quoteId, status) {
   );
 
   const quote = await getQuoteById(quoteId);
+
+  if (quote && previousQuote?.status !== "won" && status === "won") {
+    const businessId = getBusinessId();
+    const items = await getQuoteItems(quoteId);
+    const soldByProduct = new Map();
+
+    items.forEach(item => {
+      const productId = item.productId || "";
+      const qty = normalizeItemQty(item);
+      if (!productId || qty <= 0) return;
+      soldByProduct.set(productId, (soldByProduct.get(productId) || 0) + qty);
+    });
+
+    if (soldByProduct.size) {
+      const batch = writeBatch(db);
+      const productDocs = await Promise.all(
+        Array.from(soldByProduct.keys()).map(async productId => {
+          const ref = doc(db, "businesses", businessId, "products", productId);
+          const snap = await getDoc(ref);
+          return { ref, productId, snap };
+        })
+      );
+
+      productDocs.forEach(({ ref, productId, snap }) => {
+        if (!snap.exists()) return;
+
+        const product = snap.data();
+        const soldQty = Number(soldByProduct.get(productId) || 0);
+        const currentStock = Number(product.stock || 0);
+        const nextStock = Math.max(0, currentStock - soldQty);
+
+        batch.update(ref, {
+          stock: nextStock,
+          status: getProductStatus({
+            ...product,
+            stock: nextStock
+          }),
+          ...buildUpdateTimestampPayload()
+        });
+      });
+
+      await batch.commit();
+    }
+  }
 
   if (quote && status === "won" && quote.linkedType === "lead" && quote.linkedId) {
     const lead = await getBusinessDocById("leads", quote.linkedId);
@@ -845,7 +998,7 @@ export async function updateQuoteStatus(quoteId, status) {
 ========================= */
 
 const PIPELINE_STATUS_MAP = [
-  { key: "draft", stage: "lead", label: "Lead" },
+  { key: "draft", stage: "lead", label: "Prospecto" },
   { key: "sent", stage: "contacted", label: "Contactado" },
   { key: "pending", stage: "quoted", label: "Cotización" },
   { key: "negotiating", stage: "negotiation", label: "Negociación" },
@@ -855,7 +1008,7 @@ const PIPELINE_STATUS_MAP = [
 
 export function getPipelineColumns() {
   return [
-    { id: "lead", title: "Lead" },
+    { id: "lead", title: "Prospecto" },
     { id: "contacted", title: "Contactado" },
     { id: "quoted", title: "Cotización" },
     { id: "negotiation", title: "Negociación" },
@@ -939,7 +1092,7 @@ export async function canCreateEntity(entityType) {
 
 export function getPlanLimitMessage(entityType) {
   const messages = {
-    leads: "¿Necesitas agregar más leads? Mejora tu plan para seguir captando oportunidades.",
+    leads: "¿Necesitas agregar más prospectos? Mejora tu plan para seguir captando oportunidades.",
     clients: "¿Necesitas agregar más clientes? Mejora tu plan para administrar más relaciones comerciales.",
     quotes: "¿Necesitas crear más cotizaciones? Mejora tu plan y opera sin límites.",
     products: "¿Necesitas controlar productos e inventario? Esta función está disponible en Plan Pro."

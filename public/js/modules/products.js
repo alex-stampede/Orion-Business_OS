@@ -4,6 +4,7 @@ import {
   listProducts,
   createProduct,
   updateProduct,
+  addProductStock,
   deleteProduct,
   getInventoryMetrics,
   getCurrentBusinessPlan,
@@ -15,7 +16,9 @@ let filteredProducts = [];
 let inventoryMetricsCache = null;
 
 function getProductStatus(product = {}) {
-  const stock = Number(product.stock || 0);
+  const stock = Number(
+    product.availableStock != null ? product.availableStock : product.stock || 0
+  );
   const minStock = Number(product.minStock || 0);
 
   if (stock <= 0) {
@@ -98,7 +101,9 @@ function renderKpis() {
     totalProducts: 0,
     lowStockCount: 0,
     outOfStockCount: 0,
-    inventoryValue: 0
+    inventoryValue: 0,
+    totalQuotedStock: 0,
+    totalAvailableStock: 0
   };
 
   return `
@@ -116,6 +121,16 @@ function renderKpis() {
       <article class="app-kpi-card">
         <small>Agotados</small>
         <strong>${metrics.outOfStockCount || 0}</strong>
+      </article>
+
+      <article class="app-kpi-card">
+        <small>Stock cotizado</small>
+        <strong>${metrics.totalQuotedStock || 0}</strong>
+      </article>
+
+      <article class="app-kpi-card">
+        <small>Stock libre</small>
+        <strong>${metrics.totalAvailableStock || 0}</strong>
       </article>
 
       <article class="app-kpi-card">
@@ -217,7 +232,7 @@ function renderProductsTable() {
   if (!filteredProducts.length) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="8">
+        <td colspan="10">
           <div class="table-empty-state">
             <h3>Aún no has agregado productos</h3>
             <p class="muted">
@@ -256,6 +271,8 @@ function renderProductsTable() {
           <td>${escapeHtml(product.category || "—")}</td>
           <td>${formatCurrency(Number(product.unitPrice || 0), "MXN")}</td>
           <td>${Number(product.stock || 0)}</td>
+          <td>${Number(product.quotedStock || 0)}</td>
+          <td>${Number(product.availableStock != null ? product.availableStock : product.stock || 0)}</td>
           <td>${Number(product.minStock || 0)}</td>
           <td>
             <span class="status-pill ${status.key === "active" ? "won" : status.key === "low" ? "pending" : "lost"}">
@@ -266,6 +283,9 @@ function renderProductsTable() {
             <div class="btn-row">
               <button class="btn btn-secondary btn-sm js-edit-product" data-id="${product.id}">
                 Editar
+              </button>
+              <button class="btn btn-secondary btn-sm js-add-stock-product" data-id="${product.id}">
+                Agregar stock
               </button>
               <button class="btn btn-secondary btn-sm js-delete-product" data-id="${product.id}">
                 Eliminar
@@ -309,6 +329,60 @@ function bindTableActions() {
         showToast("No se pudo eliminar el producto");
       }
     };
+  });
+
+  document.querySelectorAll(".js-add-stock-product").forEach(btn => {
+    btn.onclick = () => {
+      const product = productsCache.find(p => p.id === btn.dataset.id);
+      if (!product) return;
+      openAddStockModal(product);
+    };
+  });
+}
+
+function openAddStockModal(product = {}) {
+  openModal({
+    title: "Agregar unidades al stock",
+    content: `
+      <div class="field">
+        <label>Producto</label>
+        <input type="text" value="${escapeHtml(product.name || "Producto")}" disabled />
+      </div>
+
+      <div class="field" style="margin-top:12px;">
+        <label for="product-stock-add-units">Unidades a agregar</label>
+        <input id="product-stock-add-units" type="number" min="1" step="1" value="1" />
+      </div>
+    `,
+    actions: `
+      <button class="btn btn-secondary" type="button" id="cancel-stock-add-btn">
+        Cancelar
+      </button>
+      <button class="btn btn-primary" type="button" id="confirm-stock-add-btn">
+        Agregar al stock
+      </button>
+    `
+  });
+
+  document.getElementById("cancel-stock-add-btn")?.addEventListener("click", closeModal);
+
+  document.getElementById("confirm-stock-add-btn")?.addEventListener("click", async () => {
+    const units = Number(document.getElementById("product-stock-add-units")?.value || 0);
+
+    if (!Number.isFinite(units) || units <= 0) {
+      showToast("Escribe una cantidad válida mayor a 0");
+      return;
+    }
+
+    try {
+      await addProductStock(product.id, units);
+      closeModal();
+      showToast("Stock agregado correctamente");
+      await loadProducts();
+    } catch (error) {
+      console.error(error);
+      showToast("No se pudo agregar stock");
+    }
   });
 }
 
@@ -571,6 +645,8 @@ export function renderProducts() {
                   <th>Categoría</th>
                   <th>Precio</th>
                   <th>Stock</th>
+                  <th>Stock cotizado</th>
+                  <th>Stock libre</th>
                   <th>Mínimo</th>
                   <th>Estado</th>
                   <th>Acciones</th>
@@ -578,7 +654,7 @@ export function renderProducts() {
               </thead>
               <tbody id="products-table-body">
                 <tr>
-                  <td colspan="8">Cargando productos...</td>
+                  <td colspan="10">Cargando productos...</td>
                 </tr>
               </tbody>
             </table>

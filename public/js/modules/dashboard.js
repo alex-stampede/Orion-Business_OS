@@ -53,7 +53,7 @@ export function renderDashboard(state = {}) {
             <strong>${m.totalQuotes}</strong>
           </article>
           <article class="app-kpi-card">
-            <small>Leads activos</small>
+            <small>Prospectos activos</small>
             <strong>${m.totalLeads}</strong>
           </article>
           <article class="app-kpi-card">

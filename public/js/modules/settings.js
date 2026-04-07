@@ -120,7 +120,7 @@ function renderPlanStatusPanels(plan = {}) {
           <strong>${formatUnixDate(plan.currentPeriodEnd) || "final del periodo actual"}</strong>.
         </p>
         <p class="muted">
-          Reactiva tu suscripción antes de esa fecha para no perder acceso a leads, clientes y cotizaciones ilimitadas.
+          Reactiva tu suscripción antes de esa fecha para no perder acceso a prospectos, clientes y cotizaciones ilimitadas.
         </p>
         <div class="btn-row mt-4">
           <button class="btn btn-primary" type="button" id="manage-subscription-btn">
@@ -229,8 +229,8 @@ export function renderSettings(state = {}) {
           <p class="muted" style="margin-top:14px;">
             ${
               plan.isPro
-                ? "Tu cuenta opera sin límites y tiene acceso completo a leads, clientes y cotizaciones ilimitadas."
-                : "Tu cuenta incluye hasta 3 leads, 3 clientes y 3 cotizaciones."
+                ? "Tu cuenta opera sin límites y tiene acceso completo a prospectos, clientes y cotizaciones ilimitadas."
+                : "Tu cuenta incluye hasta 3 prospectos, 3 clientes y 3 cotizaciones."
             }
           </p>
 

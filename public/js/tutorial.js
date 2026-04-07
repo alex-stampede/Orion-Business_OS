@@ -4,7 +4,7 @@ import { setTutorialSeen, getState } from "./state.js";
 const tutorialSteps = [
   {
     title: "Bienvenido a Orion Flow",
-    text: "Aquí podrás centralizar cotizaciones, leads, clientes y oportunidades comerciales."
+    text: "Aquí podrás centralizar cotizaciones, prospectos, clientes y oportunidades comerciales."
   },
   {
     title: "Dashboard",
@@ -15,7 +15,7 @@ const tutorialSteps = [
     text: "Desde aquí podrás crear, editar, exportar a PDF y dar seguimiento a cada propuesta."
   },
   {
-    title: "Leads y Clientes",
+    title: "Prospectos y Clientes",
     text: "Organiza prospectos antes de convertirlos en clientes, con mejor contexto comercial."
   },
   {
