@@ -68,14 +68,21 @@
           <span>Pipeline</span>
         </a>
 
+        <a class="nav-item nav-item-pro" data-route="products" href="#products">
+          <span class="nav-dot"></span>
+          <span>Productos</span>
+          <span class="badge-pro">PRO</span>
+        </a>
+
         <a class="nav-item" data-route="settings" href="#settings">
           <span class="nav-dot"></span>
           <span>Configuración</span>
         </a>
+
         <a class="nav-item" data-route="orion-admin" href="#orion-admin" style="display:none;">
-  <span class="nav-dot"></span>
-  <span>Control Center</span>
-</a>
+          <span class="nav-dot"></span>
+          <span>Control Center</span>
+        </a>
       </nav>
 
       <div class="sidebar-bottom">
@@ -91,12 +98,13 @@
         <button class="btn btn-secondary sidebar-logout" id="logout-btn" type="button">
           Cerrar sesión
         </button>
+
         <div class="sidebar-support">
-  <div class="support-label">Soporte</div>
-  <a href="mailto:contacto@marketingorion.com" class="support-email">
-    contacto@marketingorion.com
-  </a>
-</div>
+          <div class="support-label">Soporte</div>
+          <a href="mailto:contacto@marketingorion.com" class="support-email">
+            contacto@marketingorion.com
+          </a>
+        </div>
       </div>
     </aside>
 
@@ -138,135 +146,135 @@
   </main>
 
   <script type="module">
-  import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-  import { auth, db } from "./js/firebase-config.js";
-  import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-  import { setState } from "./js/state.js";
-  import { initRouter } from "./js/router.js";
-  import { updateSidebarProfile, showToast } from "./js/ui.js";
+    import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { auth, db } from "./js/firebase-config.js";
+    import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { setState } from "./js/state.js";
+    import { initRouter } from "./js/router.js";
+    import { updateSidebarProfile, showToast } from "./js/ui.js";
 
-  function setupMobileSidebar() {
-    const sidebar = document.getElementById("sidebar");
-    const mobileMenuBtn = document.getElementById("mobile-menu-btn");
+    function setupMobileSidebar() {
+      const sidebar = document.getElementById("sidebar");
+      const mobileMenuBtn = document.getElementById("mobile-menu-btn");
 
-    const isMobile = () => window.innerWidth <= 980;
+      const isMobile = () => window.innerWidth <= 980;
 
-    const toggleSidebar = () => {
-      if (!isMobile()) return;
-      sidebar?.classList.toggle("is-mobile-open");
-    };
-
-    const closeSidebar = () => {
-      if (!isMobile()) return;
-      sidebar?.classList.remove("is-mobile-open");
-    };
-
-    mobileMenuBtn?.addEventListener("click", event => {
-      event.preventDefault();
-      toggleSidebar();
-    });
-
-    document.querySelectorAll(".sidebar .nav-item").forEach(item => {
-      item.addEventListener("click", () => {
-        closeSidebar();
-      });
-    });
-
-    window.addEventListener("resize", () => {
-      if (!isMobile()) {
-        sidebar?.classList.remove("is-mobile-open");
-      }
-    });
-  }
-
-  async function bootstrapApp(firebaseUser) {
-    const userRef = doc(db, "users", firebaseUser.uid);
-    const userSnap = await getDoc(userRef);
-
-    let appUser = {
-      uid: firebaseUser.uid,
-      email: firebaseUser.email || "",
-      displayName: firebaseUser.displayName || "",
-      fullName: firebaseUser.displayName || ""
-    };
-
-    let business = {
-      name: "Mi negocio",
-      plan: "free",
-      planName: "Plan Inicio",
-      planPrice: 0,
-      subscriptionStatus: "inactive",
-      cancelAtPeriodEnd: false
-    };
-
-    if (userSnap.exists()) {
-      const userData = userSnap.data();
-
-      appUser = {
-        uid: firebaseUser.uid,
-        email: firebaseUser.email || "",
-        displayName: firebaseUser.displayName || userData.fullName || "",
-        fullName: userData.fullName || firebaseUser.displayName || "",
-        businessId: userData.businessId || "",
-        role: userData.role || "owner"
+      const toggleSidebar = () => {
+        if (!isMobile()) return;
+        sidebar?.classList.toggle("is-mobile-open");
       };
 
-      if (userData.businessId) {
-        const businessRef = doc(db, "businesses", userData.businessId);
-        const businessSnap = await getDoc(businessRef);
+      const closeSidebar = () => {
+        if (!isMobile()) return;
+        sidebar?.classList.remove("is-mobile-open");
+      };
 
-        if (businessSnap.exists()) {
-          const businessData = businessSnap.data();
+      mobileMenuBtn?.addEventListener("click", event => {
+        event.preventDefault();
+        toggleSidebar();
+      });
 
-          business = {
-            id: businessSnap.id,
-            ...businessData,
-            name: businessData.name || businessData.businessName || "Mi negocio",
-            plan: businessData.plan || "free",
-            planName:
-              businessData.planName ||
-              (businessData.plan === "pro" ? "Plan Pro" : "Plan Inicio"),
-            planPrice: Number(businessData.planPrice || 0),
-            subscriptionStatus: businessData.subscriptionStatus || "inactive",
-            cancelAtPeriodEnd: Boolean(businessData.cancelAtPeriodEnd)
-          };
+      document.querySelectorAll(".sidebar .nav-item").forEach(item => {
+        item.addEventListener("click", () => {
+          closeSidebar();
+        });
+      });
+
+      window.addEventListener("resize", () => {
+        if (!isMobile()) {
+          sidebar?.classList.remove("is-mobile-open");
+        }
+      });
+    }
+
+    async function bootstrapApp(firebaseUser) {
+      const userRef = doc(db, "users", firebaseUser.uid);
+      const userSnap = await getDoc(userRef);
+
+      let appUser = {
+        uid: firebaseUser.uid,
+        email: firebaseUser.email || "",
+        displayName: firebaseUser.displayName || "",
+        fullName: firebaseUser.displayName || ""
+      };
+
+      let business = {
+        name: "Mi negocio",
+        plan: "free",
+        planName: "Plan Inicio",
+        planPrice: 0,
+        subscriptionStatus: "inactive",
+        cancelAtPeriodEnd: false
+      };
+
+      if (userSnap.exists()) {
+        const userData = userSnap.data();
+
+        appUser = {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email || "",
+          displayName: firebaseUser.displayName || userData.fullName || "",
+          fullName: userData.fullName || firebaseUser.displayName || "",
+          businessId: userData.businessId || "",
+          role: userData.role || "owner"
+        };
+
+        if (userData.businessId) {
+          const businessRef = doc(db, "businesses", userData.businessId);
+          const businessSnap = await getDoc(businessRef);
+
+          if (businessSnap.exists()) {
+            const businessData = businessSnap.data();
+
+            business = {
+              id: businessSnap.id,
+              ...businessData,
+              name: businessData.name || businessData.businessName || "Mi negocio",
+              plan: businessData.plan || "free",
+              planName:
+                businessData.planName ||
+                (businessData.plan === "pro" ? "Plan Pro" : "Plan Inicio"),
+              planPrice: Number(businessData.planPrice || 0),
+              subscriptionStatus: businessData.subscriptionStatus || "inactive",
+              cancelAtPeriodEnd: Boolean(businessData.cancelAtPeriodEnd)
+            };
+          }
         }
       }
+
+      setState({
+        user: appUser,
+        business
+      });
+
+      updateSidebarProfile(appUser, business);
+      initRouter();
+      setupMobileSidebar();
     }
 
-    setState({
-      user: appUser,
-      business
+    onAuthStateChanged(auth, async firebaseUser => {
+      if (!firebaseUser) {
+        window.location.href = "./login.html";
+        return;
+      }
+
+      try {
+        await bootstrapApp(firebaseUser);
+      } catch (error) {
+        console.error("Error al inicializar la app:", error);
+        showToast("No se pudo cargar la aplicación");
+      }
     });
 
-    updateSidebarProfile(appUser, business);
-    initRouter();
-    setupMobileSidebar();
-  }
-
-  onAuthStateChanged(auth, async firebaseUser => {
-    if (!firebaseUser) {
-      window.location.href = "./login.html";
-      return;
-    }
-
-    try {
-      await bootstrapApp(firebaseUser);
-    } catch (error) {
-      console.error("Error al inicializar la app:", error);
-      showToast("No se pudo cargar la aplicación");
-    }
-  });
-
-  document.getElementById("logout-btn")?.addEventListener("click", async () => {
-    try {
-      await signOut(auth);
-      window.location.href = "./login.html";
-    } catch (error) {
-      console.error("Error al cerrar sesión:", error);
-      showToast("No se pudo cerrar sesión");
-    }
-  });
-</script>
+    document.getElementById("logout-btn")?.addEventListener("click", async () => {
+      try {
+        await signOut(auth);
+        window.location.href = "./login.html";
+      } catch (error) {
+        console.error("Error al cerrar sesión:", error);
+        showToast("No se pudo cerrar sesión");
+      }
+    });
+  </script>
 </body>
 </html>
