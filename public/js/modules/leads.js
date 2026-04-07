@@ -53,13 +53,13 @@ function renderLeadPlanAlert() {
     <article class="app-panel plan-usage-card">
       <div class="card-head">
         <strong>Plan Inicio</strong>
-        <span>${current}/${limit} leads usados</span>
+        <span>${current}/${limit} prospectos usados</span>
       </div>
 
       ${buildUsageDots(current, limit)}
 
       <p class="muted">
-        Actualiza a Plan Pro para tener leads ilimitados.
+        Actualiza a Plan Pro para tener prospectos ilimitados.
       </p>
 
       <div class="btn-row mt-4">
@@ -102,7 +102,7 @@ function openLeadModal(lead = null) {
   const isEdit = Boolean(lead);
 
   openModal({
-    title: isEdit ? "Editar lead" : "Nuevo lead",
+    title: isEdit ? "Editar prospecto" : "Nuevo prospecto",
 
     content: `
 <form id="lead-modal-form" style="display:grid;gap:16px">
@@ -111,7 +111,7 @@ function openLeadModal(lead = null) {
 ${
   isEdit
     ? "Actualiza la información del prospecto."
-    : "Captura la información del lead para dar seguimiento comercial."
+    : "Captura la información del prospecto para dar seguimiento comercial."
 }
 </p>
 
@@ -157,7 +157,7 @@ ${
     <input
       id="lead-source"
       type="text"
-      value="Manual"
+      value="Ej. WhatsApp, Facebook, Referido, Sitio web"
       placeholder="Ej. WhatsApp, Facebook, Referido, Sitio web"
     />
   </div>
@@ -234,14 +234,14 @@ function renderLeadRows() {
 
 <div style="padding:40px;text-align:center">
 
-<h3>Aún no has creado leads</h3>
+<h3>Aún no has creado prospectos</h3>
 
 <p class="muted">
-Empieza agregando tu primer lead.
+Empieza agregando tu primer prospecto.
 </p>
 
 <button class="btn btn-primary" id="create-first-lead-btn">
-Crear lead
+Crear prospecto
 </button>
 
 </div>
@@ -341,11 +341,11 @@ function bindLeadActions() {
 
       const lead = leadsCache.find((l) => l.id === btn.dataset.id);
 
-      if (!confirm(`Eliminar lead "${lead.name}"?`)) return;
+      if (!confirm(`Eliminar prospecto "${lead.name}"?`)) return;
 
       await deleteLead(lead.id);
 
-      showToast("Lead eliminado");
+      showToast("Prospecto eliminado");
 
       loadLeads();
     };
@@ -381,7 +381,7 @@ Captura y da seguimiento a oportunidades comerciales.
 <div class="btn-row">
 
 <button class="btn btn-primary" id="new-lead-btn">
-Nuevo lead
+Nuevo prospecto
 </button>
 
 </div>
@@ -428,7 +428,7 @@ Nuevo lead
 
 <div class="card-head">
 
-<strong>Listado de leads</strong>
+<strong>Listado de prospectos</strong>
 
 <span id="leads-count"></span>
 
