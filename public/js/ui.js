@@ -111,6 +111,8 @@ export function updateSidebarProfile(user = {}, business = {}) {
   if (brandTagline) {
     brandTagline.textContent = "Dirige tu negocio desde un solo lugar";
   }
+
+  syncProductsNavState();
 }
 
 export function syncUpgradeButton() {
@@ -121,6 +123,32 @@ export function syncUpgradeButton() {
   const isPro = (state.business?.plan || "free") === "pro";
 
   button.style.display = isPro ? "none" : "inline-flex";
+}
+
+export function syncProductsNavState() {
+  const state = getState();
+  const isPro = (state.business?.plan || "free") === "pro";
+
+  const productsNav = document.querySelector('[data-route="products"]');
+  if (!productsNav) return;
+
+  const badge = productsNav.querySelector(".badge-pro");
+
+  if (isPro) {
+    productsNav.classList.remove("nav-item-locked");
+    productsNav.removeAttribute("aria-disabled");
+    productsNav.title = "";
+    if (badge) {
+      badge.style.display = "none";
+    }
+  } else {
+    productsNav.classList.add("nav-item-locked");
+    productsNav.setAttribute("aria-disabled", "true");
+    productsNav.title = "Disponible en Plan Pro";
+    if (badge) {
+      badge.style.display = "inline-flex";
+    }
+  }
 }
 
 export function openModal({ title = "", content = "", actions = "" } = {}) {
