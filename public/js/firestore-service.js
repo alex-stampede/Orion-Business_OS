@@ -133,29 +133,6 @@ function getSortableValue(value) {
   return 0;
 }
 
-function buildTimestampPayload() {
-  const now = new Date();
-
-  return {
-    createdAt: now,
-    updatedAt: now,
-    createdAtMs: now.getTime(),
-    updatedAtMs: now.getTime(),
-    serverCreatedAt: serverTimestamp(),
-    serverUpdatedAt: serverTimestamp()
-  };
-}
-
-function buildUpdateTimestampPayload() {
-  const now = new Date();
-
-  return {
-    updatedAt: now,
-    updatedAtMs: now.getTime(),
-    serverUpdatedAt: serverTimestamp()
-  };
-}
-
 export function getBusinessCollection(collectionName) {
   const businessId = getBusinessId();
   return collection(db, "businesses", businessId, collectionName);
@@ -191,7 +168,7 @@ export async function listBusinessCollection(
       ...item.data()
     }));
   } catch (error) {
-    console.warn(`Fallback sin orderBy en ${collectionName}:`, error);
+    console.warn(Fallback sin orderBy en ${collectionName}:, error);
 
     const snapshot = await getDocs(ref);
 
@@ -248,10 +225,16 @@ export async function listRecentActivities(maxItems = 8) {
 
 export async function createBusinessDoc(collectionName, data) {
   const ref = getBusinessCollection(collectionName);
+  const now = new Date();
 
   const payload = {
     ...data,
-    ...buildTimestampPayload()
+    createdAt: now,
+    updatedAt: now,
+    createdAtMs: now.getTime(),
+    updatedAtMs: now.getTime(),
+    serverCreatedAt: serverTimestamp(),
+    serverUpdatedAt: serverTimestamp()
   };
 
   const result = await addDoc(ref, payload);
@@ -260,10 +243,13 @@ export async function createBusinessDoc(collectionName, data) {
 
 export async function updateBusinessDoc(collectionName, docId, data) {
   const ref = getBusinessDoc(collectionName, docId);
+  const now = new Date();
 
   await updateDoc(ref, {
     ...data,
-    ...buildUpdateTimestampPayload()
+    updatedAt: now,
+    updatedAtMs: now.getTime(),
+    serverUpdatedAt: serverTimestamp()
   });
 }
 
@@ -300,12 +286,15 @@ export async function getBusinessSettings() {
 export async function saveBusinessSettings(data) {
   const businessId = getBusinessId();
   const ref = doc(db, "businesses", businessId, "settings", "general");
+  const now = new Date();
 
   await setDoc(
     ref,
     {
       ...data,
-      ...buildUpdateTimestampPayload()
+      updatedAt: now,
+      updatedAtMs: now.getTime(),
+      serverUpdatedAt: serverTimestamp()
     },
     { merge: true }
   );
@@ -355,15 +344,11 @@ export async function addActivity(type, message, meta = {}) {
   });
 }
 
-/* =========================
-   LEADS
-========================= */
-
 export async function createLead(data) {
   const id = await createBusinessDoc("leads", data);
   await addActivity(
     "lead_created",
-    `Se creó el lead "${data.name || "Sin nombre"}".`,
+    Se creó el lead "${data.name || "Sin nombre"}".,
     {
       leadId: id,
       name: data.name || ""
@@ -381,20 +366,16 @@ export async function deleteLead(leadId, leadName = "") {
   await removeBusinessDoc("leads", leadId);
   await addActivity(
     "lead_deleted",
-    `Se eliminó el lead "${leadName || "Sin nombre"}".`,
+    Se eliminó el lead "${leadName || "Sin nombre"}".,
     { leadId }
   );
 }
-
-/* =========================
-   CLIENTS
-========================= */
 
 export async function createClient(data) {
   const id = await createBusinessDoc("clients", data);
   await addActivity(
     "client_created",
-    `Se creó el cliente "${data.name || "Sin nombre"}".`,
+    Se creó el cliente "${data.name || "Sin nombre"}".,
     {
       clientId: id,
       name: data.name || ""
@@ -412,146 +393,10 @@ export async function deleteClient(clientId, clientName = "") {
   await removeBusinessDoc("clients", clientId);
   await addActivity(
     "client_deleted",
-    `Se eliminó el cliente "${clientName || "Sin nombre"}".`,
+    Se eliminó el cliente "${clientName || "Sin nombre"}".,
     { clientId }
   );
 }
-
-/* =========================
-   PRODUCTS / INVENTORY
-========================= */
-
-export function getProductStatus(product = {}) {
-  const stock = Number(product.stock || 0);
-  const minStock = Number(product.minStock || 0);
-
-  if (stock <= 0) return "out";
-  if (stock <= minStock) return "low";
-  return "active";
-}
-
-export function getProductStatusLabel(status = "active") {
-  return {
-    active: "Activo",
-    low: "Stock bajo",
-    out: "Agotado"
-  }[status] || "Activo";
-}
-
-export async function listProducts() {
-  const products = await listBusinessCollection("products");
-
-  return products.map(product => ({
-    ...product,
-    status: getProductStatus(product)
-  }));
-}
-
-export async function getProductById(productId) {
-  const product = await getBusinessDocById("products", productId);
-
-  if (!product) return null;
-
-  return {
-    ...product,
-    status: getProductStatus(product)
-  };
-}
-
-export async function createProduct(data) {
-  const payload = {
-    name: data.name || "",
-    sku: data.sku || "",
-    category: data.category || "",
-    description: data.description || "",
-    unitPrice: Number(data.unitPrice || 0),
-    stock: Number(data.stock || 0),
-    minStock: Number(data.minStock || 0),
-    status: getProductStatus(data)
-  };
-
-  const id = await createBusinessDoc("products", payload);
-
-  await addActivity(
-    "product_created",
-    `Se creó el producto "${payload.name || "Sin nombre"}".`,
-    {
-      productId: id,
-      name: payload.name || ""
-    }
-  );
-
-  return id;
-}
-
-export async function updateProduct(productId, data) {
-  const payload = {
-    name: data.name || "",
-    sku: data.sku || "",
-    category: data.category || "",
-    description: data.description || "",
-    unitPrice: Number(data.unitPrice || 0),
-    stock: Number(data.stock || 0),
-    minStock: Number(data.minStock || 0),
-    status: getProductStatus(data)
-  };
-
-  await updateBusinessDoc("products", productId, payload);
-
-  await addActivity(
-    "product_updated",
-    `Se actualizó un producto.`,
-    { productId }
-  );
-}
-
-export async function deleteProduct(productId, productName = "") {
-  await removeBusinessDoc("products", productId);
-
-  await addActivity(
-    "product_deleted",
-    `Se eliminó el producto "${productName || "Sin nombre"}".`,
-    {
-      productId,
-      name: productName || ""
-    }
-  );
-}
-
-export async function getInventoryMetrics() {
-  const products = await listProducts();
-
-  const totalProducts = products.length;
-  const lowStockCount = products.filter(product => getProductStatus(product) === "low").length;
-  const outOfStockCount = products.filter(product => getProductStatus(product) === "out").length;
-
-  const inventoryValue = products.reduce((acc, product) => {
-    const unitPrice = Number(product.unitPrice || 0);
-    const stock = Number(product.stock || 0);
-    return acc + unitPrice * stock;
-  }, 0);
-
-  return {
-    totalProducts,
-    lowStockCount,
-    outOfStockCount,
-    inventoryValue
-  };
-}
-
-export async function getLowStockProducts() {
-  const products = await listProducts();
-  return products.filter(product => getProductStatus(product) === "low");
-}
-
-export async function getOutOfStockProducts() {
-  const products = await listProducts();
-  return products.filter(product => getProductStatus(product) === "out");
-}
-
-/* =========================
-   DASHBOARD
-========================= */
 
 export async function getDashboardMetrics() {
   const [quotes, leads, clients, activities] = await Promise.all([
@@ -627,7 +472,9 @@ export async function convertLeadToClient(leadId, leadData, quoteId = null) {
     batch.update(quoteRef, {
       linkedType: "client",
       linkedId: newClientRef.id,
-      ...buildUpdateTimestampPayload()
+      updatedAt: now,
+      updatedAtMs: now.getTime(),
+      serverUpdatedAt: serverTimestamp()
     });
   }
 
@@ -635,7 +482,7 @@ export async function convertLeadToClient(leadId, leadData, quoteId = null) {
 
   await addActivity(
     "lead_converted",
-    `El lead "${leadData.name || "Sin nombre"}" se convirtió en cliente.`,
+    El lead "${leadData.name || "Sin nombre"}" se convirtió en cliente.,
     {
       leadId,
       clientId: newClientRef.id,
@@ -659,7 +506,7 @@ export async function getNextQuoteFolio() {
   return {
     prefix,
     nextNumber,
-    folio: `${prefix}-${padded}`,
+    folio: ${prefix}-${padded},
     taxRate: Number(settings.taxRate || 16),
     currency: settings.currency || "MXN",
     quoteTheme: settings.quoteTheme || "green",
@@ -739,7 +586,7 @@ export async function createQuote({ quoteData, items }) {
 
   await addActivity(
     "quote_created",
-    `Se creó la cotización "${quoteData.folio}".`,
+    Se creó la cotización "${quoteData.folio}".,
     { quoteId, folio: quoteData.folio }
   );
 
@@ -815,7 +662,7 @@ export async function deleteQuote(quoteId, folio = "") {
 
   await addActivity(
     "quote_deleted",
-    `Se eliminó la cotización "${folio || quoteId}".`,
+    Se eliminó la cotización "${folio || quoteId}".,
     { quoteId, folio }
   );
 }
@@ -825,7 +672,7 @@ export async function updateQuoteStatus(quoteId, status) {
 
   await addActivity(
     "quote_status_updated",
-    `Se actualizó el estatus de una cotización a "${status}".`,
+    Se actualizó el estatus de una cotización a "${status}".,
     { quoteId, status }
   );
 
@@ -897,10 +744,6 @@ export function canDeleteInCurrentPlan() {
   return getCurrentBusinessPlan().canDelete;
 }
 
-export function canUseProductsModule() {
-  return isProPlan();
-}
-
 export async function getUsageCounts() {
   const [leads, clients, quotes] = await Promise.all([
     listBusinessCollection("leads"),
@@ -940,8 +783,7 @@ export function getPlanLimitMessage(entityType) {
   const messages = {
     leads: "¿Necesitas agregar más leads? Mejora tu plan para seguir captando oportunidades.",
     clients: "¿Necesitas agregar más clientes? Mejora tu plan para administrar más relaciones comerciales.",
-    quotes: "¿Necesitas crear más cotizaciones? Mejora tu plan y opera sin límites.",
-    products: "¿Necesitas controlar productos e inventario? Esta función está disponible en Plan Pro."
+    quotes: "¿Necesitas crear más cotizaciones? Mejora tu plan y opera sin límites."
   };
 
   return messages[entityType] || "Mejora tu plan para desbloquear más funciones.";
@@ -957,13 +799,16 @@ export async function updateBusinessPlan(planCode) {
 
   const selectedPlan = PLAN_CONFIG[planCode] || PLAN_CONFIG.free;
   const ref = doc(db, "businesses", businessId);
+  const now = new Date();
 
   await updateDoc(ref, {
     plan: selectedPlan.code,
     planName: selectedPlan.name,
     planPrice: selectedPlan.price,
     billingCycle: "monthly",
-    ...buildUpdateTimestampPayload()
+    updatedAt: now,
+    updatedAtMs: now.getTime(),
+    serverUpdatedAt: serverTimestamp()
   });
 
   setState({
