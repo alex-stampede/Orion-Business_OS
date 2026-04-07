@@ -95,6 +95,7 @@ function buildQuoteHTML(quote = {}) {
     total = 0,
     subtotal = 0,
     taxes = 0,
+    taxEnabled = false,
     notes = "",
     currency = "MXN",
     logoUrl = "",
@@ -136,6 +137,7 @@ function buildQuoteHTML(quote = {}) {
 
   const companyName = businessName || "Mi Negocio";
   const businessMeta = [businessEmail, businessPhone].filter(Boolean).join(" · ");
+  const showTaxes = Boolean(taxEnabled);
 
   const paymentTermsBlock =
     paymentTermsEnabled && paymentTermsText
@@ -417,10 +419,16 @@ function buildQuoteHTML(quote = {}) {
             <span>Subtotal</span>
             <strong>${formatMoney(subtotal || 0, currency)}</strong>
           </div>
+          ${
+            showTaxes
+              ? `
           <div class="totals-row">
             <span>Impuestos</span>
             <strong>${formatMoney(taxes || 0, currency)}</strong>
           </div>
+          `
+              : ""
+          }
           <div class="totals-row total">
             <span>Total</span>
             <strong>${formatMoney(total || 0, currency)}</strong>
