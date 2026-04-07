@@ -389,3 +389,11 @@
     flex-direction: column;
   }
 }
+
+.nav-item-pro {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start; /* 👈 esto lo corrige */
+  gap: 10px;
+  text-align: left;
+}
