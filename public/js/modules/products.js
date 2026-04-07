@@ -15,7 +15,9 @@ let filteredProducts = [];
 let inventoryMetricsCache = null;
 
 function getProductStatus(product = {}) {
-  const stock = Number(product.stock || 0);
+  const stock = Number(
+    product.availableStock != null ? product.availableStock : product.stock || 0
+  );
   const minStock = Number(product.minStock || 0);
 
   if (stock <= 0) {
@@ -98,7 +100,9 @@ function renderKpis() {
     totalProducts: 0,
     lowStockCount: 0,
     outOfStockCount: 0,
-    inventoryValue: 0
+    inventoryValue: 0,
+    totalQuotedStock: 0,
+    totalAvailableStock: 0
   };
 
   return `
@@ -116,6 +120,16 @@ function renderKpis() {
       <article class="app-kpi-card">
         <small>Agotados</small>
         <strong>${metrics.outOfStockCount || 0}</strong>
+      </article>
+
+      <article class="app-kpi-card">
+        <small>Stock cotizado</small>
+        <strong>${metrics.totalQuotedStock || 0}</strong>
+      </article>
+
+      <article class="app-kpi-card">
+        <small>Stock libre</small>
+        <strong>${metrics.totalAvailableStock || 0}</strong>
       </article>
 
       <article class="app-kpi-card">
@@ -217,7 +231,7 @@ function renderProductsTable() {
   if (!filteredProducts.length) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="8">
+        <td colspan="10">
           <div class="table-empty-state">
             <h3>Aún no has agregado productos</h3>
             <p class="muted">
@@ -256,6 +270,8 @@ function renderProductsTable() {
           <td>${escapeHtml(product.category || "—")}</td>
           <td>${formatCurrency(Number(product.unitPrice || 0), "MXN")}</td>
           <td>${Number(product.stock || 0)}</td>
+          <td>${Number(product.quotedStock || 0)}</td>
+          <td>${Number(product.availableStock != null ? product.availableStock : product.stock || 0)}</td>
           <td>${Number(product.minStock || 0)}</td>
           <td>
             <span class="status-pill ${status.key === "active" ? "won" : status.key === "low" ? "pending" : "lost"}">
@@ -571,6 +587,8 @@ export function renderProducts() {
                   <th>Categoría</th>
                   <th>Precio</th>
                   <th>Stock</th>
+                  <th>Stock cotizado</th>
+                  <th>Stock libre</th>
                   <th>Mínimo</th>
                   <th>Estado</th>
                   <th>Acciones</th>
@@ -578,7 +596,7 @@ export function renderProducts() {
               </thead>
               <tbody id="products-table-body">
                 <tr>
-                  <td colspan="8">Cargando productos...</td>
+                  <td colspan="10">Cargando productos...</td>
                 </tr>
               </tbody>
             </table>
