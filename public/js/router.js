@@ -41,7 +41,7 @@ const routes = {
   },
 
   leads: {
-    title: "Leads",
+    title: "Prospectos",
     render: renderLeads,
     init: initLeads
   },

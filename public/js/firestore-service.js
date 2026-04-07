@@ -363,7 +363,7 @@ export async function createLead(data) {
   const id = await createBusinessDoc("leads", data);
   await addActivity(
     "lead_created",
-    `Se creó el lead "${data.name || "Sin nombre"}".`,
+    `Se creó el prospecto "${data.name || "Sin nombre"}".`,
     {
       leadId: id,
       name: data.name || ""
@@ -374,14 +374,14 @@ export async function createLead(data) {
 
 export async function updateLead(leadId, data) {
   await updateBusinessDoc("leads", leadId, data);
-  await addActivity("lead_updated", "Se actualizó un lead.", { leadId });
+  await addActivity("lead_updated", "Se actualizó un prospecto.", { leadId });
 }
 
 export async function deleteLead(leadId, leadName = "") {
   await removeBusinessDoc("leads", leadId);
   await addActivity(
     "lead_deleted",
-    `Se eliminó el lead "${leadName || "Sin nombre"}".`,
+    `Se eliminó el prospecto "${leadName || "Sin nombre"}".`,
     { leadId }
   );
 }
@@ -565,6 +565,38 @@ export async function updateProduct(productId, data) {
   );
 }
 
+export async function addProductStock(productId, units = 0) {
+  const amount = Number(units || 0);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error("La cantidad a agregar debe ser mayor a 0.");
+  }
+
+  const product = await getBusinessDocById("products", productId);
+  if (!product) {
+    throw new Error("No se encontró el producto.");
+  }
+
+  const nextStock = Number(product.stock || 0) + amount;
+
+  await updateBusinessDoc("products", productId, {
+    stock: nextStock,
+    status: getProductStatus({
+      ...product,
+      stock: nextStock
+    })
+  });
+
+  await addActivity(
+    "product_stock_added",
+    `Se agregaron ${amount} unidades al producto "${product.name || productId}".`,
+    {
+      productId,
+      amount,
+      nextStock
+    }
+  );
+}
+
 export async function deleteProduct(productId, productName = "") {
   await removeBusinessDoc("products", productId);
 
@@ -710,7 +742,7 @@ export async function convertLeadToClient(leadId, leadData, quoteId = null) {
 
   await addActivity(
     "lead_converted",
-    `El lead "${leadData.name || "Sin nombre"}" se convirtió en cliente.`,
+    `El prospecto "${leadData.name || "Sin nombre"}" se convirtió en cliente.`,
     {
       leadId,
       clientId: newClientRef.id,
@@ -966,7 +998,7 @@ export async function updateQuoteStatus(quoteId, status) {
 ========================= */
 
 const PIPELINE_STATUS_MAP = [
-  { key: "draft", stage: "lead", label: "Lead" },
+  { key: "draft", stage: "lead", label: "Prospecto" },
   { key: "sent", stage: "contacted", label: "Contactado" },
   { key: "pending", stage: "quoted", label: "Cotización" },
   { key: "negotiating", stage: "negotiation", label: "Negociación" },
@@ -976,7 +1008,7 @@ const PIPELINE_STATUS_MAP = [
 
 export function getPipelineColumns() {
   return [
-    { id: "lead", title: "Lead" },
+    { id: "lead", title: "Prospecto" },
     { id: "contacted", title: "Contactado" },
     { id: "quoted", title: "Cotización" },
     { id: "negotiation", title: "Negociación" },
@@ -1060,7 +1092,7 @@ export async function canCreateEntity(entityType) {
 
 export function getPlanLimitMessage(entityType) {
   const messages = {
-    leads: "¿Necesitas agregar más leads? Mejora tu plan para seguir captando oportunidades.",
+    leads: "¿Necesitas agregar más prospectos? Mejora tu plan para seguir captando oportunidades.",
     clients: "¿Necesitas agregar más clientes? Mejora tu plan para administrar más relaciones comerciales.",
     quotes: "¿Necesitas crear más cotizaciones? Mejora tu plan y opera sin límites.",
     products: "¿Necesitas controlar productos e inventario? Esta función está disponible en Plan Pro."

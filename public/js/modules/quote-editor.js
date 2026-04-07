@@ -72,7 +72,7 @@ function renderLeadOptions() {
   if (!select) return;
 
   select.innerHTML = `
-    <option value="">Selecciona un lead</option>
+    <option value="">Selecciona un prospecto</option>
     ${leadsCache
       .map(
         lead =>
@@ -451,7 +451,7 @@ export function renderQuoteEditor() {
           <p class="eyebrow-sm">Cotización</p>
           <h2 id="quote-editor-title">Nueva cotización</h2>
           <p class="muted">
-            Crea una propuesta profesional, vincúlala a un lead o cliente y genera su PDF.
+            Crea una propuesta profesional, vincúlala a un prospecto o cliente y genera su PDF.
           </p>
         </div>
       </div>
@@ -493,7 +493,7 @@ export function renderQuoteEditor() {
 
             <div class="card-head" style="margin-top:24px;">
               <strong>Vinculación</strong>
-              <span>Lead / Cliente</span>
+              <span>Prospecto / Cliente</span>
             </div>
 
             <div class="form-grid-2">
@@ -503,7 +503,7 @@ export function renderQuoteEditor() {
                   <option value="none">Sin vincular</option>
                   <option value="lead">Prospecto existente</option>
                   <option value="client">Cliente existente</option>
-                  <option value="new-lead">Crear nuevo lead</option>
+                  <option value="new-lead">Crear nuevo prospecto</option>
                 </select>
               </div>
             </div>

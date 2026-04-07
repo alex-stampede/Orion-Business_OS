@@ -4,6 +4,7 @@ import {
   listProducts,
   createProduct,
   updateProduct,
+  addProductStock,
   deleteProduct,
   getInventoryMetrics,
   getCurrentBusinessPlan,
@@ -283,6 +284,9 @@ function renderProductsTable() {
               <button class="btn btn-secondary btn-sm js-edit-product" data-id="${product.id}">
                 Editar
               </button>
+              <button class="btn btn-secondary btn-sm js-add-stock-product" data-id="${product.id}">
+                Agregar stock
+              </button>
               <button class="btn btn-secondary btn-sm js-delete-product" data-id="${product.id}">
                 Eliminar
               </button>
@@ -325,6 +329,60 @@ function bindTableActions() {
         showToast("No se pudo eliminar el producto");
       }
     };
+  });
+
+  document.querySelectorAll(".js-add-stock-product").forEach(btn => {
+    btn.onclick = () => {
+      const product = productsCache.find(p => p.id === btn.dataset.id);
+      if (!product) return;
+      openAddStockModal(product);
+    };
+  });
+}
+
+function openAddStockModal(product = {}) {
+  openModal({
+    title: "Agregar unidades al stock",
+    content: `
+      <div class="field">
+        <label>Producto</label>
+        <input type="text" value="${escapeHtml(product.name || "Producto")}" disabled />
+      </div>
+
+      <div class="field" style="margin-top:12px;">
+        <label for="product-stock-add-units">Unidades a agregar</label>
+        <input id="product-stock-add-units" type="number" min="1" step="1" value="1" />
+      </div>
+    `,
+    actions: `
+      <button class="btn btn-secondary" type="button" id="cancel-stock-add-btn">
+        Cancelar
+      </button>
+      <button class="btn btn-primary" type="button" id="confirm-stock-add-btn">
+        Agregar al stock
+      </button>
+    `
+  });
+
+  document.getElementById("cancel-stock-add-btn")?.addEventListener("click", closeModal);
+
+  document.getElementById("confirm-stock-add-btn")?.addEventListener("click", async () => {
+    const units = Number(document.getElementById("product-stock-add-units")?.value || 0);
+
+    if (!Number.isFinite(units) || units <= 0) {
+      showToast("Escribe una cantidad válida mayor a 0");
+      return;
+    }
+
+    try {
+      await addProductStock(product.id, units);
+      closeModal();
+      showToast("Stock agregado correctamente");
+      await loadProducts();
+    } catch (error) {
+      console.error(error);
+      showToast("No se pudo agregar stock");
+    }
   });
 }
 
