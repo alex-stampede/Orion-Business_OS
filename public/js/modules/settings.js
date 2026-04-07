@@ -15,6 +15,7 @@ let settingsCache = {
   currency: "MXN",
   quotePrefix: "COT",
   nextQuoteNumber: 1,
+  taxEnabled: false,
   taxRate: 16,
   logoUrl: "",
   quoteTheme: "green",
@@ -305,6 +306,13 @@ export function renderSettings(state = {}) {
               </div>
 
               <div class="field">
+                <label>
+                  <input id="tax-enabled" type="checkbox" />
+                  Activar impuestos automáticos
+                </label>
+              </div>
+
+              <div class="field">
                 <label for="tax-rate">Impuesto (%)</label>
                 <input id="tax-rate" type="number" placeholder="16" />
               </div>
@@ -493,6 +501,14 @@ function bindQuoteThemePreview() {
   });
 }
 
+function toggleTaxRateInput() {
+  const taxEnabled = $("#tax-enabled")?.checked || false;
+  const taxRateInput = $("#tax-rate");
+  if (!taxRateInput) return;
+
+  taxRateInput.disabled = !taxEnabled;
+}
+
 async function loadSettingsIntoForm() {
   const settings = await getBusinessSettings();
   settingsCache = { ...settingsCache, ...(settings || {}) };
@@ -502,7 +518,9 @@ async function loadSettingsIntoForm() {
   $("#business-currency").value = settingsCache.currency || "MXN";
   $("#quote-prefix").value = settingsCache.quotePrefix || "COT";
   $("#quote-next-number").value = settingsCache.nextQuoteNumber || 1;
-  $("#tax-rate").value = settingsCache.taxRate || 16;
+  $("#tax-enabled").checked = Boolean(settingsCache.taxEnabled);
+  $("#tax-rate").value = settingsCache.taxRate ?? 16;
+  toggleTaxRateInput();
   if ($("#quote-theme")) $("#quote-theme").value = settingsCache.quoteTheme || "green";
 
   $("#payment-terms-enabled").checked = Boolean(settingsCache.paymentTermsEnabled);
@@ -557,6 +575,7 @@ export function initSettings() {
   });
 
   bindBillingButtons();
+  $("#tax-enabled")?.addEventListener("change", toggleTaxRateInput);
 
   form.addEventListener("submit", async event => {
     event.preventDefault();
@@ -578,7 +597,8 @@ export function initSettings() {
         currency: $("#business-currency")?.value || "MXN",
         quotePrefix: $("#quote-prefix")?.value.trim() || "COT",
         nextQuoteNumber: Number($("#quote-next-number")?.value || 1),
-        taxRate: Number($("#tax-rate")?.value || 16),
+        taxEnabled: $("#tax-enabled")?.checked || false,
+        taxRate: Number($("#tax-rate")?.value ?? 16),
         logoUrl,
         quoteTheme: isPro ? ($("#quote-theme")?.value || "green") : "green",
 

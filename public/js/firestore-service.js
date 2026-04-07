@@ -660,7 +660,8 @@ export async function getNextQuoteFolio() {
     prefix,
     nextNumber,
     folio: `${prefix}-${padded}`,
-    taxRate: Number(settings.taxRate || 16),
+    taxEnabled: Boolean(settings.taxEnabled),
+    taxRate: Number(settings.taxRate ?? 16),
     currency: settings.currency || "MXN",
     quoteTheme: settings.quoteTheme || "green",
     settings
