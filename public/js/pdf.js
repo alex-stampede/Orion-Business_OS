@@ -157,7 +157,7 @@ function buildQuoteHTML(quote = {}) {
         <h3>Datos bancarios</h3>
         ${bankName ? `<p><strong>Banco:</strong> ${bankName}</p>` : ""}
         ${bankAccountHolder ? `<p><strong>Beneficiario:</strong> ${bankAccountHolder}</p>` : ""}
-        ${bankAccountNumber ? `<p><strong>Cuenta:</strong> ${bankAccountNumber}</p>` : ""}
+        ${bankAccountNumber ? `<p><strong>Número de tarjeta:</strong> ${bankAccountNumber}</p>` : ""}
         ${bankClabe ? `<p><strong>CLABE:</strong> ${bankClabe}</p>` : ""}
       </div>
     `

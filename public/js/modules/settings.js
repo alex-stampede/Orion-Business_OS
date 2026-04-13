@@ -440,8 +440,8 @@ export function renderSettings(state = {}) {
                 </div>
 
                 <div class="field">
-                  <label for="bank-account-number">Número de cuenta</label>
-                  <input id="bank-account-number" type="text" placeholder="1234567890" />
+                  <label for="bank-account-number">Número de tarjeta</label>
+                  <input id="bank-account-number" type="text" placeholder="1234 5678 9012 3456" />
                 </div>
 
                 <div class="field">
