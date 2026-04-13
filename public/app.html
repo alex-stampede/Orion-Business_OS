@@ -147,11 +147,11 @@
 
   <script type="module">
     import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-    import { auth, db } from "./js/firebase-config.js";
+    import { auth, db } from "./js/firebase-config.js?v=20260413c";
     import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-    import { setState } from "./js/state.js";
-    import { initRouter } from "./js/router.js";
-    import { updateSidebarProfile, showToast } from "./js/ui.js";
+    import { setState } from "./js/state.js?v=20260413c";
+    import { initRouter } from "./js/router.js?v=20260413c";
+    import { updateSidebarProfile, showToast } from "./js/ui.js?v=20260413c";
 
     function setupMobileSidebar() {
       const sidebar = document.getElementById("sidebar");
@@ -187,6 +187,10 @@
       });
     }
 
+    function normalizeRole(value = "") {
+      return String(value || "").trim().toLowerCase();
+    }
+
     async function bootstrapApp(firebaseUser) {
       const userRef = doc(db, "users", firebaseUser.uid);
       const userSnap = await getDoc(userRef);
@@ -209,6 +213,8 @@
 
       if (userSnap.exists()) {
         const userData = userSnap.data();
+        let businessUserData = null;
+        const rootRole = normalizeRole(userData.role || "");
 
         appUser = {
           uid: firebaseUser.uid,
@@ -216,10 +222,29 @@
           displayName: firebaseUser.displayName || userData.fullName || "",
           fullName: userData.fullName || firebaseUser.displayName || "",
           businessId: userData.businessId || "",
-          role: userData.role || "owner"
+          role: rootRole || "owner"
         };
 
         if (userData.businessId) {
+          try {
+            const businessUserRef = doc(
+              db,
+              "businesses",
+              userData.businessId,
+              "users",
+              firebaseUser.uid
+            );
+            const businessUserSnap = await getDoc(businessUserRef);
+            businessUserData = businessUserSnap.exists() ? businessUserSnap.data() : null;
+          } catch (error) {
+            console.warn("No se pudo leer el rol del usuario en el negocio:", error);
+          }
+
+          const effectiveRole = normalizeRole(
+            businessUserData?.role || rootRole || ""
+          );
+          appUser.role = effectiveRole || "owner";
+
           const businessRef = doc(db, "businesses", userData.businessId);
           const businessSnap = await getDoc(businessRef);
 
@@ -237,6 +262,17 @@
               planPrice: Number(businessData.planPrice || 0),
               subscriptionStatus: businessData.subscriptionStatus || "inactive",
               cancelAtPeriodEnd: Boolean(businessData.cancelAtPeriodEnd)
+            };
+          }
+
+          if (appUser.role === "super_admin") {
+            business = {
+              ...business,
+              plan: "pro",
+              planName: "Plan Pro",
+              planPrice: 0,
+              subscriptionStatus: "active",
+              cancelAtPeriodEnd: false
             };
           }
         }
