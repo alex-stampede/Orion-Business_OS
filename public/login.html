@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Iniciar sesión — Orion Business OS</title>
+  <meta name="description" content="Accede a tu panel de Orion Flow." />
+  <link rel="stylesheet" href="styles/tokens.css" />
+  <link rel="stylesheet" href="styles/base.css" />
+  <link rel="stylesheet" href="styles/layout.css" />
+  <link rel="stylesheet" href="styles/components.css" />
+  <link rel="stylesheet" href="styles/utilities.css" />
+  <link rel="stylesheet" href="styles/pages.css" />
+</head>
+<body class="auth-body">
+  <div class="bg-orbs"></div>
+
+  <main class="auth-shell">
+    <section class="auth-panel glass">
+      <a href="index.html" class="brand auth-brand">
+       <div class="brand-mark">
+  <img src="https://marketingorion.com/wp-content/uploads/2026/03/Logo-Orion-Blanco.png" alt="Orion Business OS">
+</div>
+        <div>
+          <strong>Orion Business OS</strong>
+          <span>Acceso al sistema</span>
+        </div>
+      </a>
+
+      <div class="auth-copy">
+        <div class="chip"><span class="dot"></span> Bienvenido de vuelta</div>
+        <h1>Inicia sesión</h1>
+        <p class="lead-sm">
+          Accede a tu dashboard para gestionar cotizaciones, leads, clientes y oportunidades.
+        </p>
+      </div>
+
+      <form id="login-form" class="form-card">
+        <div class="field">
+          <label for="email">Correo electrónico</label>
+          <input type="email" id="email" name="email" placeholder="tu@negocio.com" required />
+        </div>
+
+        <div class="field">
+          <label for="password">Contraseña</label>
+          <input type="password" id="password" name="password" placeholder="••••••••" required />
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block">Entrar</button>
+
+        <p id="login-message" class="form-message" aria-live="polite"></p>
+
+        <div class="auth-links">
+          <a href="register.html">Crear cuenta</a>
+          <a href="index.html">Volver al inicio</a>
+        </div>
+      </form>
+    </section>
+
+    <section class="auth-visual glass">
+      <div class="ui-window auth-window">
+        <div class="window-head">
+          <div class="window-dots"><span></span><span></span><span></span></div>
+          <div class="window-title">Acceso seguro</div>
+          <div class="chip chip-xs">Orion UI</div>
+        </div>
+
+        <div class="auth-preview">
+          <div class="preview-card">
+            <div class="card-head">
+              <strong>Tu operación en orden</strong>
+            </div>
+            <div class="activity-list">
+              <div class="activity-item"><span class="activity-dot"></span><p>Cotizaciones listas para PDF</p></div>
+              <div class="activity-item"><span class="activity-dot"></span><p>Leads organizados por etapa</p></div>
+              <div class="activity-item"><span class="activity-dot"></span><p>Clientes con historial centralizado</p></div>
+            </div>
+          </div>
+
+          <div class="preview-card">
+            <div class="card-head">
+              <strong>Flujo Orion</strong>
+            </div>
+            <div class="steps-mini">
+              <div class="step-mini">Lead</div>
+              <div class="step-mini">Contacto</div>
+              <div class="step-mini">Cotización</div>
+              <div class="step-mini active">Cierre</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="js/firebase-config.js"></script>
+  <script type="module" src="js/auth.js"></script>
+</body>
+</html>
