@@ -4,6 +4,7 @@ import {
   getBusinessSettings,
   saveBusinessSettings,
   addActivity,
+  updateBusinessPlan,
   uploadBusinessLogo
 } from "../firestore-service.js";
 import { getState, setState } from "../state.js";
@@ -58,20 +59,27 @@ function formatUnixDate(unixSeconds) {
 
 function getPlanUI(state = {}) {
   const business = state.business || {};
+  const userRole = String(state.user?.role || "").trim().toLowerCase();
+  const isSuperAdmin = userRole === "super_admin";
   const isPro = business.plan === "pro";
-  const subscriptionStatus = business.subscriptionStatus || "inactive";
+  const subscriptionStatus = isSuperAdmin
+    ? (isPro ? "active" : "inactive")
+    : (business.subscriptionStatus || "inactive");
   const cancelAtPeriodEnd = Boolean(business.cancelAtPeriodEnd);
   const currentPeriodEnd = business.currentPeriodEnd || business.subscriptionEndsAt || null;
   const paymentIssue = Boolean(business.paymentIssue);
 
   return {
+    isSuperAdmin,
     isPro,
     planName: isPro ? "Plan Pro" : "Plan Inicio",
     subscriptionStatus,
     cancelAtPeriodEnd,
     currentPeriodEnd,
     paymentIssue,
-    priceText: isPro ? "$179 MXN / mes" : "Gratis"
+    priceText: isSuperAdmin
+      ? "Acceso interno"
+      : (isPro ? "$179 MXN / mes" : "Gratis")
   };
 }
 
@@ -235,7 +243,29 @@ export function renderSettings(state = {}) {
           </p>
 
           ${
-            !plan.cancelAtPeriodEnd && !plan.paymentIssue
+            plan.isSuperAdmin
+              ? `
+                <div class="app-panel" style="margin-top:14px; padding:14px 16px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+                    <div>
+                      <strong>Activar Plan Pro sin pago</strong>
+                      <p class="muted" style="margin-top:6px;">
+                        Como <code>super_admin</code>, puedes alternar entre Plan Inicio y Plan Pro para esta cuenta.
+                      </p>
+                    </div>
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                      <span style="font-size:12px;">Inicio</span>
+                      <input id="super-admin-plan-switch" type="checkbox" ${plan.isPro ? "checked" : ""} />
+                      <span style="font-size:12px;">Pro</span>
+                    </label>
+                  </div>
+                </div>
+              `
+              : ""
+          }
+
+          ${
+            !plan.isSuperAdmin && !plan.cancelAtPeriodEnd && !plan.paymentIssue
               ? `
                 <div class="btn-row mt-4">
                   ${
@@ -569,6 +599,31 @@ function bindBillingButtons() {
   });
 }
 
+function bindSuperAdminPlanSwitch() {
+  const switchInput = $("#super-admin-plan-switch");
+  if (!switchInput) return;
+
+  switchInput.addEventListener("change", async () => {
+    const planCode = switchInput.checked ? "pro" : "free";
+
+    try {
+      switchInput.disabled = true;
+      const selectedPlan = await updateBusinessPlan(planCode);
+      showToast(
+        selectedPlan.code === "pro"
+          ? "Plan Pro activado sin pago (super_admin)."
+          : "Cuenta regresó a Plan Inicio."
+      );
+    } catch (error) {
+      console.error(error);
+      switchInput.checked = !switchInput.checked;
+      showToast(error.message || "No se pudo cambiar el plan.");
+    } finally {
+      switchInput.disabled = false;
+    }
+  });
+}
+
 export function initSettings() {
   const form = $("#settings-form");
   if (!form) return;
@@ -578,6 +633,7 @@ export function initSettings() {
   });
 
   bindBillingButtons();
+  bindSuperAdminPlanSwitch();
   $("#tax-enabled")?.addEventListener("change", toggleTaxRateInput);
 
   form.addEventListener("submit", async event => {
