@@ -177,6 +177,19 @@ onAuthStateChanged(auth, async (user) => {
       businessData = businessSnap.exists() ? businessSnap.data() : null;
     }
 
+    const role = String(userData?.role || "").trim().toLowerCase();
+    const isSuperAdmin = role === "super_admin";
+
+    if (isSuperAdmin) {
+      businessData = {
+        ...(businessData || {}),
+        plan: "pro",
+        planName: "Plan Pro",
+        planPrice: 0,
+        subscriptionStatus: "active",
+      };
+    }
+
     const fullUser = {
       uid: user.uid,
       email: user.email,
