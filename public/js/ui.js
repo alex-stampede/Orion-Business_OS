@@ -120,9 +120,10 @@ export function syncUpgradeButton() {
   if (!button) return;
 
   const state = getState();
+  const isSuperAdmin = String(state.user?.role || "").trim().toLowerCase() === "super_admin";
   const isPro = (state.business?.plan || "free") === "pro";
 
-  button.style.display = isPro ? "none" : "inline-flex";
+  button.style.display = isPro || isSuperAdmin ? "none" : "inline-flex";
 }
 
 export function syncProductsNavState() {
