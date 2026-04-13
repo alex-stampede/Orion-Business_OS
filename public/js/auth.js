@@ -169,12 +169,38 @@ onAuthStateChanged(auth, async (user) => {
     const userData = userSnap.exists() ? userSnap.data() : null;
 
     let businessData = null;
+    let businessUserData = null;
 
     if (userData?.businessId) {
       const businessSnap = await getDoc(
         doc(db, "businesses", userData.businessId),
       );
       businessData = businessSnap.exists() ? businessSnap.data() : null;
+
+      try {
+        const businessUserSnap = await getDoc(
+          doc(db, "businesses", userData.businessId, "users", user.uid),
+        );
+        businessUserData = businessUserSnap.exists() ? businessUserSnap.data() : null;
+      } catch (error) {
+        console.warn("No se pudo cargar el rol del usuario dentro del negocio:", error);
+        businessUserData = null;
+      }
+    }
+
+    const effectiveRole = String(
+      userData?.role || businessUserData?.role || "",
+    ).trim().toLowerCase();
+    const isSuperAdmin = effectiveRole === "super_admin";
+
+    if (isSuperAdmin) {
+      businessData = {
+        ...(businessData || {}),
+        plan: "pro",
+        planName: "Plan Pro",
+        planPrice: 0,
+        subscriptionStatus: "active",
+      };
     }
 
     const fullUser = {
@@ -182,6 +208,7 @@ onAuthStateChanged(auth, async (user) => {
       email: user.email,
       displayName: user.displayName,
       ...(userData || {}),
+      role: effectiveRole,
     };
 
     setState({
