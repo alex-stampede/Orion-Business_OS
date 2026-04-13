@@ -147,11 +147,11 @@
 
   <script type="module">
     import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-    import { auth, db } from "./js/firebase-config.js";
+    import { auth, db } from "./js/firebase-config.js?v=20260413c";
     import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-    import { setState } from "./js/state.js";
-    import { initRouter } from "./js/router.js";
-    import { updateSidebarProfile, showToast } from "./js/ui.js";
+    import { setState } from "./js/state.js?v=20260413c";
+    import { initRouter } from "./js/router.js?v=20260413c";
+    import { updateSidebarProfile, showToast } from "./js/ui.js?v=20260413c";
 
     function setupMobileSidebar() {
       const sidebar = document.getElementById("sidebar");
