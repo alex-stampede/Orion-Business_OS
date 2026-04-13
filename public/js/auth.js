@@ -24,6 +24,10 @@ const loginForm = $("#login-form");
 const registerForm = $("#register-form");
 const logoutBtn = $("#logout-btn");
 
+function normalizeRole(value = "") {
+  return String(value || "").trim().toLowerCase();
+}
+
 if (registerForm) {
   registerForm.addEventListener("submit", async (event) => {
     event.preventDefault();
