@@ -131,7 +131,7 @@
   border-radius: 30px;
   overflow: hidden;
   border: 1px solid var(--line);
-  background: linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.045));
+  background: var(--white);
   box-shadow: var(--shadow-lg);
 }
 
@@ -142,7 +142,7 @@
   gap: 14px;
   padding: 16px 18px;
   border-bottom: 1px solid var(--line-soft);
-  background: rgba(255,255,255,0.03);
+  background: var(--white);
 }
 
 .window-dots {
@@ -173,7 +173,7 @@
 .stat-card {
   padding: 18px;
   border-radius: 22px;
-  background: rgba(255,255,255,0.045);
+  background: var(--white);
   border: 1px solid var(--line-soft);
   box-shadow: var(--shadow-xs);
 }
@@ -200,7 +200,7 @@
 .form-card {
   border-radius: 28px;
   border: 1px solid var(--line);
-  background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.045));
+  background: var(--white);
   box-shadow: var(--shadow-sm);
 }
 
