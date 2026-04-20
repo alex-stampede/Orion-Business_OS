@@ -1333,9 +1333,9 @@ button:disabled.btn-disabled {
 #app-modal .field textarea {
   width: 100%;
   min-height: 48px;
-  border: 1px solid rgba(9, 56, 46, 0.14);
-  background: var(--white);
-  color: var(--text-strong);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--panel-2);
+  color: #ffffff;
   border-radius: 16px;
   padding: 12px 14px;
   outline: none;
