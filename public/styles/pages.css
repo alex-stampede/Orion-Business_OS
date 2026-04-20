@@ -1348,7 +1348,7 @@ button:disabled.btn-disabled {
 
 #app-modal .field input::placeholder,
 #app-modal .field textarea::placeholder {
-  color: rgba(255, 255, 255, 0.38);
+  color: rgba(29, 58, 52, 0.62);
 }
 
 #app-modal .field label {
@@ -1356,7 +1356,7 @@ button:disabled.btn-disabled {
   margin-bottom: 8px;
   font-size: 13px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.82);
+  color: var(--text-main);
 }
 
 #app-modal .btn-row {
@@ -1367,7 +1367,7 @@ button:disabled.btn-disabled {
 }
 
 #app-modal .modal-note {
-  color: rgba(255, 255, 255, 0.68);
+  color: var(--text-soft);
   font-size: 14px;
   line-height: 1.6;
   margin: 0;
