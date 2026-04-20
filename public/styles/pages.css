@@ -1333,11 +1333,9 @@ button:disabled.btn-disabled {
 #app-modal .field textarea {
   width: 100%;
   min-height: 48px;
-  border: 1px solid rgba(125, 142, 137, 0.45) !important;
-  background: var(--white) !important;
-  color: var(--text-main) !important;
-  -webkit-text-fill-color: var(--text-main) !important;
-  caret-color: var(--orion-600);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--panel-2);
+  color: #ffffff;
   border-radius: 16px;
   padding: 12px 14px;
   outline: none;
@@ -1352,25 +1350,11 @@ button:disabled.btn-disabled {
 #app-modal .field input:focus,
 #app-modal .field select:focus,
 #app-modal .field textarea:focus {
-  border-color: rgba(125, 142, 137, 0.62) !important;
+  border-color: var(--line);
   box-shadow: 0 0 0 3px rgba(15, 42, 36, 0.08);
-  background: var(--white) !important;
-  color: var(--text-main) !important;
-  -webkit-text-fill-color: var(--text-main) !important;
-}
-
-#app-modal .field input:-webkit-autofill,
-#app-modal .field input:-webkit-autofill:hover,
-#app-modal .field input:-webkit-autofill:focus,
-#app-modal .field textarea:-webkit-autofill,
-#app-modal .field textarea:-webkit-autofill:hover,
-#app-modal .field textarea:-webkit-autofill:focus,
-#app-modal .field select:-webkit-autofill,
-#app-modal .field select:-webkit-autofill:hover,
-#app-modal .field select:-webkit-autofill:focus {
-  -webkit-text-fill-color: var(--text-main) !important;
-  box-shadow: 0 0 0 1000px var(--white) inset !important;
-  border: 1px solid rgba(125, 142, 137, 0.45) !important;
+  background: var(--white);
+  color: var(--text-main);
+  -webkit-text-fill-color: var(--text-main);
 }
 
 #app-modal .field select option {

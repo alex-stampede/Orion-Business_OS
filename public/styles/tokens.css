@@ -42,12 +42,12 @@
     radial-gradient(circle at 20% 12%, rgba(126, 226, 184, 0.12), transparent 22%),
     linear-gradient(180deg, #fbfefd 0%, #eef6f3 100%);
 
-  --panel: #ffffff;
-  --panel-2: #ffffff;
-  --panel-3: #ffffff;
-  --panel-4: #ffffff;
+  --panel: rgba(255, 255, 255, 0.72);
+  --panel-2: rgba(255, 255, 255, 0.58);
+  --panel-3: rgba(255, 255, 255, 0.45);
+  --panel-4: rgba(255, 255, 255, 0.34);
 
-  --panel-strong: #ffffff;
+  --panel-strong: rgba(255, 255, 255, 0.84);
   --panel-highlight: rgba(126, 226, 184, 0.18);
 
   /* Borders */
