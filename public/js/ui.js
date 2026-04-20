@@ -179,11 +179,10 @@ export function openModal({ title = "", content = "", actions = "" } = {}) {
   modal.style.overflowY = "auto";
   modal.style.borderRadius = "24px";
   modal.style.padding = "24px";
-  modal.style.background =
-    "linear-gradient(180deg, rgba(18,33,28,0.95), rgba(13,24,20,0.95))";
-  modal.style.border = "1px solid rgba(255,255,255,0.08)";
-  modal.style.boxShadow = "0 30px 80px rgba(0,0,0,0.35)";
-  modal.style.color = "#fff";
+  modal.style.background = "#ffffff";
+  modal.style.border = "1px solid rgba(9,56,46,0.14)";
+  modal.style.boxShadow = "0 30px 80px rgba(5,36,30,0.18)";
+  modal.style.color = "#10312a";
 
   modal.innerHTML = `
     <div style="display:grid; gap:16px;">
@@ -201,9 +200,9 @@ export function openModal({ title = "", content = "", actions = "" } = {}) {
             height:42px;
             min-width:42px;
             border-radius:14px;
-            border:1px solid rgba(255,255,255,0.08);
-            background:rgba(255,255,255,0.05);
-            color:#fff;
+            border:1px solid rgba(9,56,46,0.16);
+            background:#ffffff;
+            color:#1d3a34;
             font-size:22px;
             cursor:pointer;
           "
