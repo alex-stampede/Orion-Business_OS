@@ -181,7 +181,7 @@ hr {
 }
 
 .glass {
-  background: var(--white);
+  background: linear-gradient(180deg, var(--panel-strong), var(--panel-2));
   backdrop-filter: blur(var(--blur-lg));
   -webkit-backdrop-filter: blur(var(--blur-lg));
   border: 1px solid var(--line);
@@ -189,7 +189,7 @@ hr {
 }
 
 .glass-subtle {
-  background: var(--white);
+  background: linear-gradient(180deg, var(--panel-2), var(--panel-4));
   backdrop-filter: blur(var(--blur-md));
   -webkit-backdrop-filter: blur(var(--blur-md));
   border: 1px solid var(--line-soft);
