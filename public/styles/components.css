@@ -46,9 +46,9 @@
   min-height: 38px;
   padding: 8px 14px;
   border-radius: var(--radius-pill);
-  background: rgba(255,255,255,0.07);
+  background: var(--panel-3);
   border: 1px solid rgba(126,226,184,0.14);
-  color: var(--orion-200);
+  color: var(--orion-600);
   font-size: 13px;
   font-weight: 700;
 }
@@ -107,12 +107,12 @@
 
 .btn-secondary {
   color: var(--text-main);
-  background: rgba(255,255,255,0.05);
+  background: var(--panel-2);
   border: 1px solid var(--line);
 }
 
 .btn-secondary:hover {
-  background: rgba(255,255,255,0.08);
+  background: var(--panel-2);
   border-color: rgba(126,226,184,0.18);
 }
 
@@ -229,7 +229,7 @@
   border-radius: 16px;
   background: linear-gradient(135deg, rgba(126,226,184,0.2), rgba(13,91,74,0.24));
   border: 1px solid rgba(126,226,184,0.14);
-  color: var(--orion-200);
+  color: var(--orion-600);
   font-size: 14px;
   font-weight: 800;
 }
@@ -292,7 +292,7 @@
   height: 42px;
   border-radius: 14px;
   border: 1px solid var(--line);
-  background: rgba(255,255,255,0.05);
+  background: var(--panel-2);
 }
 
 .sidebar-nav {
@@ -316,7 +316,7 @@
 
 .nav-item:hover,
 .nav-item.is-active {
-  background: rgba(255,255,255,0.07);
+  background: var(--panel-3);
   border-color: rgba(126,226,184,0.16);
   color: var(--text-strong);
 }

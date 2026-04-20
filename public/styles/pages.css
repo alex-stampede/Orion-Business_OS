@@ -248,7 +248,7 @@
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--panel-2);
   border: 1px solid var(--line-soft);
   font-size: 13px;
   font-weight: 700;
@@ -347,7 +347,7 @@
 .app-kpi-card {
   padding: 18px;
   border-radius: 22px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--panel-2);
   border: 1px solid var(--line-soft);
 }
 
@@ -435,7 +435,7 @@
 
 .status-pill.won {
   background: rgba(126, 226, 184, 0.12);
-  color: var(--orion-200);
+  color: var(--orion-600);
   border-color: rgba(126, 226, 184, 0.18);
 }
 
@@ -1342,7 +1342,7 @@ button:disabled.btn-disabled {
   width: 100%;
   min-height: 48px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--panel-2);
   color: #ffffff;
   border-radius: 16px;
   padding: 12px 14px;
@@ -1520,7 +1520,7 @@ button:disabled.btn-disabled {
 
 .ba-label-after {
   background: rgba(126, 226, 184, 0.12);
-  color: var(--orion-200);
+  color: var(--orion-600);
   border: 1px solid rgba(126, 226, 184, 0.18);
 }
 
@@ -1650,7 +1650,7 @@ button:disabled.btn-disabled {
 .product-kpi-card {
   padding: 18px;
   border-radius: 22px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--panel-2);
   border: 1px solid var(--line-soft);
 }
 
@@ -1741,7 +1741,7 @@ button:disabled.btn-disabled {
 
 .product-stock.ok {
   background: rgba(126, 226, 184, 0.12);
-  color: var(--orion-200);
+  color: var(--orion-600);
   border-color: rgba(126, 226, 184, 0.2);
 }
 
