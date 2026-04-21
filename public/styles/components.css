@@ -33,9 +33,10 @@
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.18),
     0 10px 28px rgba(0,0,0,0.22);
-  img{
-    max-width: 80%;
-  }
+}
+
+.brand-mark img {
+  max-width: 80%;
 }
 
 .chip {
