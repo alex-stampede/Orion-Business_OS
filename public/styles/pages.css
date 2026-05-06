@@ -2052,3 +2052,78 @@ button:disabled.btn-disabled {
   gap: 10px;
   text-align: left;
 }
+
+/* ===== LANDING SOCIAL PROOF POPUPS ===== */
+
+.social-proof-popup {
+  position: fixed;
+  left: 24px;
+  bottom: 24px;
+  z-index: 60;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 12px;
+  width: min(390px, calc(100vw - 32px));
+  padding: 14px 16px;
+  border: 1px solid rgba(0, 56, 46, 0.12);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 18px 46px rgba(5, 36, 30, 0.16);
+  color: var(--text-main);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate3d(0, 18px, 0) scale(0.98);
+  transition:
+    opacity 260ms ease,
+    transform 260ms ease;
+  backdrop-filter: blur(18px);
+}
+
+.social-proof-popup.is-visible {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+}
+
+.social-proof-popup__icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 15px;
+  background: linear-gradient(135deg, var(--orion-600), var(--orion-400));
+  color: var(--white);
+  box-shadow: 0 12px 26px rgba(0, 56, 46, 0.2);
+  font-size: 18px;
+}
+
+.social-proof-popup__copy {
+  min-width: 0;
+}
+
+.social-proof-popup__label {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--orion-600);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.social-proof-popup__text {
+  display: block;
+  color: var(--text-strong);
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+@media (max-width: 640px) {
+  .social-proof-popup {
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    width: auto;
+  }
+}
