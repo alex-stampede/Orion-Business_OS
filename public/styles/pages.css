@@ -2052,3 +2052,109 @@ button:disabled.btn-disabled {
   gap: 10px;
   text-align: left;
 }
+
+/* =========================
+   LANDING ACTIVITY POPUPS
+========================= */
+
+.activity-popups {
+  position: fixed;
+  left: 24px;
+  bottom: 24px;
+  z-index: 60;
+  width: min(390px, calc(100vw - 32px));
+  pointer-events: none;
+}
+
+.activity-popup {
+  display: grid;
+  grid-template-columns: 46px 1fr;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 16px;
+  border: 1px solid rgba(9, 56, 46, 0.14);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 20px 56px rgba(5, 36, 30, 0.16);
+  color: var(--text-main);
+  opacity: 0;
+  transform: translate3d(-18px, 14px, 0) scale(0.98);
+  transition:
+    opacity 320ms ease,
+    transform 320ms ease;
+}
+
+.activity-popup.is-visible {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+}
+
+.activity-popup.is-hiding {
+  opacity: 0;
+  transform: translate3d(-12px, 10px, 0) scale(0.98);
+}
+
+.activity-popup__icon {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--orion-150), var(--white));
+  border: 1px solid rgba(9, 56, 46, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  font-size: 21px;
+}
+
+.activity-popup__content {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.activity-popup__label {
+  color: var(--orion-600);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.activity-popup strong {
+  color: var(--text-strong);
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+@media (max-width: 760px) {
+  .activity-popups {
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    width: auto;
+  }
+
+  .activity-popup {
+    grid-template-columns: 42px 1fr;
+    border-radius: 18px;
+    padding: 12px 14px;
+  }
+
+  .activity-popup__icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    font-size: 19px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .activity-popup {
+    transition: none;
+    transform: none;
+  }
+
+  .activity-popup.is-visible {
+    transform: none;
+  }
+}
