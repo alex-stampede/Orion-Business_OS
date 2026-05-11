@@ -206,6 +206,14 @@ GitHub → Netlify → Deploy automático
 Las funciones serverless se ubican en:
 netlify/functions
 
+## Variables de entorno para notificaciones
+
+Para recibir avisos internos por correo cuando se registra un usuario nuevo o cuando una cuenta pasa a Plan Pro, configura estas variables en Netlify:
+
+- `RESEND_API_KEY`: API key de Resend para enviar correos transaccionales.
+- `NOTIFICATION_FROM_EMAIL`: remitente verificado en Resend. Si no se configura, se usa `Orion Business OS <notificaciones@marketingorion.com>`.
+- `NOTIFICATION_TO_EMAIL`: destinatario de las alertas. Si no se configura, se usa `contacto@marketingorion.com`.
+
 ---
 
 # 🌐 Dominio
