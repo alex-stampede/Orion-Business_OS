@@ -24,6 +24,21 @@ const loginForm = $("#login-form");
 const registerForm = $("#register-form");
 const logoutBtn = $("#logout-btn");
 
+async function notifyRegistrationCreated(user) {
+  try {
+    const token = await user.getIdToken();
+
+    await fetch("/.netlify/functions/notify-registration", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  } catch (error) {
+    console.warn("REGISTRATION NOTIFICATION ERROR:", error);
+  }
+}
+
 if (registerForm) {
   registerForm.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -85,6 +100,9 @@ if (registerForm) {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
+
+      // 5) Avisar internamente sin bloquear el alta del usuario
+      await notifyRegistrationCreated(user);
 
       if (messageEl)
         messageEl.textContent = "Cuenta creada correctamente. Redirigiendo...";

@@ -1,5 +1,6 @@
 const Stripe = require("stripe");
 const admin = require("firebase-admin");
+const { notifyUserUpgradedToPro } = require("./utils/email-notifications");
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -45,6 +46,32 @@ async function logBusinessActivity(db, businessId, type, message, meta = {}) {
     meta,
     createdAt: admin.firestore.FieldValue.serverTimestamp()
   });
+}
+
+async function getBusinessOwner(db, business) {
+  const ownerUid = business?.data?.ownerUid;
+
+  if (!ownerUid) return null;
+
+  const ownerSnap = await db.collection("users").doc(ownerUid).get();
+  return ownerSnap.exists ? ownerSnap.data() : null;
+}
+
+async function notifyProUpgrade(db, business, invoice) {
+  try {
+    const owner = await getBusinessOwner(db, business);
+
+    await notifyUserUpgradedToPro({
+      businessName: business.data.name || "",
+      businessId: business.id,
+      ownerName: owner?.fullName || "",
+      ownerEmail: owner?.email || "",
+      stripeCustomerId: invoice.customer || "",
+      stripeSubscriptionId: invoice.subscription || business.data.stripeSubscriptionId || ""
+    });
+  } catch (error) {
+    console.error("pro-upgrade notification error:", error);
+  }
 }
 
 exports.handler = async (event) => {
@@ -110,6 +137,9 @@ exports.handler = async (event) => {
         const business = await findBusinessByCustomerId(db, stripeCustomerId);
 
         if (business) {
+          const shouldNotifyProUpgrade =
+            business.data.plan !== "pro" || business.data.subscriptionStatus !== "active";
+
           await business.ref.set(
             {
               plan: "pro",
@@ -137,6 +167,10 @@ exports.handler = async (event) => {
               stripeSubscriptionId: invoice.subscription || ""
             }
           );
+
+          if (shouldNotifyProUpgrade) {
+            await notifyProUpgrade(db, business, invoice);
+          }
         }
 
         break;
